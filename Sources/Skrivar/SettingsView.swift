@@ -121,7 +121,15 @@ struct GeneralTab: View {
                     set: { LaunchAtLogin.isEnabled = $0 }
                 ))
 
-                Text("Start Skrivar automatically when you log in")
+                Toggle("Show dock icon", isOn: Binding(
+                    get: { UserDefaults.standard.bool(forKey: "showDockIcon") },
+                    set: { show in
+                        UserDefaults.standard.set(show, forKey: "showDockIcon")
+                        NSApp.setActivationPolicy(show ? .regular : .accessory)
+                    }
+                ))
+
+                Text("Dock icon is optional — Skrivar always lives in the menu bar")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

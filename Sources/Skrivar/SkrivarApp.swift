@@ -63,6 +63,11 @@ struct SkrivarApp: App {
 
         keyListener.start()
         recorder.prewarm()
+
+        // Apply dock icon preference
+        let showDock = UserDefaults.standard.bool(forKey: "showDockIcon")
+        NSApp.setActivationPolicy(showDock ? .regular : .accessory)
+
         logger.info("Skrivar started")
 
         // Show onboarding on first launch
