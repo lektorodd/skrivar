@@ -63,7 +63,7 @@ struct GeneralTab: View {
                     }
                 }
 
-                Text("Used in **Translate** (⌥→⇧) and **Obsidian+** (⌥→⌘⇧) modes")
+                Text("Used in **Translate** (⌥-⇧) and **Obsidian+** (⌥-⌘⇧) modes")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -88,14 +88,14 @@ struct GeneralTab: View {
 
             Section("Shortcuts") {
                 VStack(alignment: .leading, spacing: 6) {
-                    shortcutRow("⌥ + →", "Quick capture → paste")
-                    shortcutRow("⌥ + → + ⇧", "Translate → paste")
-                    shortcutRow("⌥ + → + ⌘", "Capture → Obsidian")
-                    shortcutRow("⌥ + → + ⌘ + ⇧", "Polish → Obsidian")
+                    shortcutRow("⌥ + -", "Quick capture → paste")
+                    shortcutRow("⌥ + - + ⇧", "Translate → paste")
+                    shortcutRow("⌥ + - + ⌘", "Capture → Obsidian")
+                    shortcutRow("⌥ + - + ⌘ + ⇧", "Polish → Obsidian")
                 }
                 .font(.callout)
 
-                Text("Hold **Option + Right Arrow** to record, release to transcribe")
+                Text("Hold **Option + minus** to record, release to transcribe")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -336,7 +336,7 @@ struct HistoryTab: View {
                         .foregroundStyle(.tertiary)
                     Text("No transcriptions yet")
                         .foregroundStyle(.secondary)
-                    Text("Hold **⌥→** to start recording")
+                    Text("Hold **⌥-** to start recording")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }

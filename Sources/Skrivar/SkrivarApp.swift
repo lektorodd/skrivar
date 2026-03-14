@@ -110,10 +110,10 @@ struct SkrivarApp: App {
             Divider()
 
             // Shortcuts reference
-            Button("⌥→  Quick capture") { }.disabled(true)
-            Button("⌥→⇧  Translate") { }.disabled(true)
-            Button("⌥→⌘  → Obsidian") { }.disabled(true)
-            Button("⌥→⌘⇧  → Obsidian+") { }.disabled(true)
+            Button("⌥-  Quick capture") { }.disabled(true)
+            Button("⌥-⇧  Translate") { }.disabled(true)
+            Button("⌥-⌘  → Obsidian") { }.disabled(true)
+            Button("⌥-⌘⇧  → Obsidian+") { }.disabled(true)
 
             Divider()
 

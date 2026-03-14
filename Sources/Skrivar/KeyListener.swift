@@ -4,15 +4,15 @@ import os.log
 
 private let logger = Logger(subsystem: "com.skrivar.app", category: "KeyListener")
 
-/// Capture modes determined by modifier keys held with ⌥→.
+/// Capture modes determined by modifier keys held with ⌥-.
 enum CaptureMode: String {
-    case quick            = "Quick"           // ⌥ + →
-    case translate        = "Translate"       // ⌥ + → + ⇧
-    case obsidian         = "Obsidian"        // ⌥ + → + ⌘
-    case obsidianPolished = "Obsidian+"       // ⌥ + → + ⌘ + ⇧
+    case quick            = "Quick"           // ⌥ + -
+    case translate        = "Translate"       // ⌥ + - + ⇧
+    case obsidian         = "Obsidian"        // ⌥ + - + ⌘
+    case obsidianPolished = "Obsidian+"       // ⌥ + - + ⌘ + ⇧
 }
 
-/// Global keyboard listener for Option + Right Arrow combos using CGEvent tap.
+/// Global keyboard listener for Option + minus combos using CGEvent tap.
 final class KeyListener {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
@@ -107,21 +107,21 @@ final class KeyListener {
             }
         }
 
-        // Right Arrow key (keycode 124) — start/stop recording when Option is held
-        if keyCode == 124 {
+        // Minus key (keycode 27) — start/stop recording when Option is held
+        if keyCode == 27 {
             if eventType == .keyDown && optionHeld && !isKeyDown {
-                // ⌥ + → pressed — start recording
+                // ⌥ + - pressed — start recording
                 isKeyDown = true
                 activeMode = computeMode(flags: flags)
-                logger.info("⌥→ pressed — mode: \(self.activeMode.rawValue)")
+                logger.info("⌥- pressed — mode: \(self.activeMode.rawValue)")
                 DispatchQueue.main.async { [weak self] in
                     guard let self else { return }
                     self.onRecordStart?(self.activeMode)
                 }
             } else if eventType == .keyUp && isKeyDown {
-                // → released — stop recording
+                // - released — stop recording
                 isKeyDown = false
-                logger.info("⌥→ released — stopping (\(self.activeMode.rawValue))")
+                logger.info("⌥- released — stopping (\(self.activeMode.rawValue))")
                 DispatchQueue.main.async { [weak self] in
                     self?.onRecordStop?()
                 }
