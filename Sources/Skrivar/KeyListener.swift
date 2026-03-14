@@ -1,81 +1,95 @@
 import Cocoa
-import CoreGraphics
+import Carbon.HIToolbox
 import os.log
 
 private let logger = Logger(subsystem: "com.skrivar.app", category: "KeyListener")
 
-/// Capture modes determined by modifier keys held with ⌥-.
+/// Capture modes determined by modifier keys.
 enum CaptureMode: String {
-    case quick            = "Quick"           // ⌥ + -
-    case translate        = "Translate"       // ⌥ + - + ⇧
-    case obsidian         = "Obsidian"        // ⌥ + - + ⌘
-    case obsidianPolished = "Obsidian+"       // ⌥ + - + ⌘ + ⇧
+    case quick            = "Quick"           // Trigger alone
+    case translate        = "Translate"       // Trigger + ⇧
+    case obsidian         = "Obsidian"        // Trigger + ⌘
+    case obsidianPolished = "Obsidian+"       // Trigger + ⌘ + ⇧
 }
 
-/// Global keyboard listener for Option + trigger key combos using CGEvent tap.
+/// Global keyboard listener using NSEvent monitors.
+/// Uses Control+Option (⌃⌥) held together as the trigger — both are modifier keys
+/// so no characters are produced, and it's an ergonomic right-hand combo.
 final class KeyListener {
-    private var eventTap: CFMachPort?
-    private var runLoopSource: CFRunLoopSource?
+    private var globalMonitor: Any?
+    private var localMonitor: Any?
     var onRecordStart: ((CaptureMode) -> Void)?
     var onRecordStop: (() -> Void)?
-    /// Called when the mode changes while recording (e.g. Shift pressed/released)
     var onModeChange: ((CaptureMode) -> Void)?
     private var isKeyDown = false
     private var activeMode: CaptureMode = .quick
-    /// Track whether Option is currently held
-    private var optionHeld = false
-    /// The keycode of the trigger key (read from UserDefaults)
-    private var triggerKeyCode: Int64 = 27 // default: minus
 
-    /// Available trigger key options.
+    /// Available trigger options for the settings UI.
     static let triggerKeyOptions: [(name: String, code: Int, display: String)] = [
-        ("Minus (-)",      27,  "⌥ + -"),
-        ("Right Arrow (→)", 124, "⌥ + →"),
-        ("Space",          49,  "⌥ + Space"),
-        ("Return",         36,  "⌥ + Return"),
+        ("Control + Option (⌃⌥)", 0, "⌃⌥"),
     ]
 
     func start() {
-        // Load configured trigger key
-        let savedCode = UserDefaults.standard.integer(forKey: "triggerKeyCode")
-        triggerKeyCode = savedCode > 0 ? Int64(savedCode) : 27
-
-        // Listen for flagsChanged (modifiers) AND keyDown/keyUp (trigger key)
-        let eventMask: CGEventMask =
-            (1 << CGEventType.flagsChanged.rawValue)
-            | (1 << CGEventType.keyDown.rawValue)
-            | (1 << CGEventType.keyUp.rawValue)
-
-        let refcon = Unmanaged.passUnretained(self).toOpaque()
-
-        guard let tap = CGEvent.tapCreate(
-            tap: .cgSessionEventTap,
-            place: .headInsertEventTap,
-            options: .listenOnly,
-            eventsOfInterest: eventMask,
-            callback: { _, _, event, refcon -> Unmanaged<CGEvent>? in
-                guard let refcon else { return Unmanaged.passUnretained(event) }
-                let listener = Unmanaged<KeyListener>.fromOpaque(refcon)
-                    .takeUnretainedValue()
-                return listener.handleEvent(event)
-            },
-            userInfo: refcon
-        ) else {
-            logger.error("Failed to create event tap — check Accessibility permissions")
-            return
+        // Monitor modifier key changes globally
+        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+            self?.handleFlags(event)
         }
 
-        eventTap = tap
-        runLoopSource = CFMachPortCreateRunLoopSource(nil, tap, 0)
-        CFRunLoopAddSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
-        CGEvent.tapEnable(tap: tap, enable: true)
-        logger.info("Event tap started successfully")
+        // Also monitor locally (when our own windows are focused)
+        localMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+            self?.handleFlags(event)
+            return event
+        }
+
+        if globalMonitor != nil {
+            print("[KeyListener] Global monitor started ✓")
+            logger.info("Global key monitor started successfully")
+        } else {
+            print("[KeyListener] Failed to start global monitor — check Accessibility")
+            logger.error("Failed to start global key monitor")
+        }
     }
 
-    /// Compute the capture mode from current modifier flags (excluding Option which is the trigger).
-    private func computeMode(flags: CGEventFlags) -> CaptureMode {
-        let hasShift = flags.contains(.maskShift)
-        let hasCommand = flags.contains(.maskCommand)
+    private func handleFlags(_ event: NSEvent) {
+        let flags = event.modifierFlags
+        let triggerActive = flags.contains(.control) && flags.contains(.option)
+
+        if triggerActive && !isKeyDown {
+            // ⌃⌥ pressed — start recording
+            isKeyDown = true
+            activeMode = computeMode(flags: flags)
+            print("[KeyListener] ⌃⌥ pressed — mode: \(activeMode.rawValue)")
+            logger.info("⌃⌥ pressed — mode: \(self.activeMode.rawValue)")
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.onRecordStart?(self.activeMode)
+            }
+        } else if !triggerActive && isKeyDown {
+            // ⌃⌥ released — stop recording
+            isKeyDown = false
+            print("[KeyListener] ⌃⌥ released — stopping")
+            logger.info("⌃⌥ released — stopping (\(self.activeMode.rawValue))")
+            DispatchQueue.main.async { [weak self] in
+                self?.onRecordStop?()
+            }
+        } else if triggerActive && isKeyDown {
+            // While recording, check if mode changed (Shift/Cmd toggled)
+            let newMode = computeMode(flags: flags)
+            if newMode != activeMode {
+                activeMode = newMode
+                logger.info("Mode changed → \(newMode.rawValue)")
+                DispatchQueue.main.async { [weak self] in
+                    guard let self else { return }
+                    self.onModeChange?(self.activeMode)
+                }
+            }
+        }
+    }
+
+    /// Compute the capture mode from current modifier flags.
+    private func computeMode(flags: NSEvent.ModifierFlags) -> CaptureMode {
+        let hasShift = flags.contains(.shift)
+        let hasCommand = flags.contains(.command)
         switch (hasCommand, hasShift) {
         case (true, true):   return .obsidianPolished
         case (true, false):  return .obsidian
@@ -84,76 +98,15 @@ final class KeyListener {
         }
     }
 
-    private func handleEvent(_ event: CGEvent) -> Unmanaged<CGEvent>? {
-        let flags = event.flags
-        let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
-        let eventType = event.type
-
-        // Track Option key state via flagsChanged
-        if eventType == .flagsChanged {
-            let optionNow = flags.contains(.maskAlternate)
-
-            if !optionNow && optionHeld && isKeyDown {
-                // Option was released while recording — stop
-                isKeyDown = false
-                optionHeld = false
-                logger.info("⌥ released — stopping (\(self.activeMode.rawValue))")
-                DispatchQueue.main.async { [weak self] in
-                    self?.onRecordStop?()
-                }
-                return Unmanaged.passUnretained(event)
-            }
-
-            optionHeld = optionNow
-
-            // While recording, re-evaluate mode if Shift/Cmd changes
-            // keyCodes: 56=LShift, 60=RShift, 55=LCmd, 54=RCmd
-            if isKeyDown && (keyCode == 56 || keyCode == 60 || keyCode == 55 || keyCode == 54) {
-                let newMode = computeMode(flags: flags)
-                if newMode != activeMode {
-                    activeMode = newMode
-                    logger.info("Mode changed while recording → \(newMode.rawValue)")
-                    DispatchQueue.main.async { [weak self] in
-                        guard let self else { return }
-                        self.onModeChange?(self.activeMode)
-                    }
-                }
-            }
-        }
-
-        // Trigger key — start/stop recording when Option is held
-        if keyCode == triggerKeyCode {
-            if eventType == .keyDown && optionHeld && !isKeyDown {
-                // ⌥ + - pressed — start recording
-                isKeyDown = true
-                activeMode = computeMode(flags: flags)
-                logger.info("⌥- pressed — mode: \(self.activeMode.rawValue)")
-                DispatchQueue.main.async { [weak self] in
-                    guard let self else { return }
-                    self.onRecordStart?(self.activeMode)
-                }
-            } else if eventType == .keyUp && isKeyDown {
-                // - released — stop recording
-                isKeyDown = false
-                logger.info("⌥- released — stopping (\(self.activeMode.rawValue))")
-                DispatchQueue.main.async { [weak self] in
-                    self?.onRecordStop?()
-                }
-            }
-        }
-
-        return Unmanaged.passUnretained(event)
-    }
-
     func stop() {
-        if let tap = eventTap {
-            CGEvent.tapEnable(tap: tap, enable: false)
+        if let monitor = globalMonitor {
+            NSEvent.removeMonitor(monitor)
         }
-        if let source = runLoopSource {
-            CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
+        if let monitor = localMonitor {
+            NSEvent.removeMonitor(monitor)
         }
-        eventTap = nil
-        runLoopSource = nil
-        logger.info("Event tap stopped")
+        globalMonitor = nil
+        localMonitor = nil
+        logger.info("Key monitor stopped")
     }
 }

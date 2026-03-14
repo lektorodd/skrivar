@@ -67,7 +67,7 @@ struct GeneralTab: View {
                     }
                 }
 
-                Text("Used in **Translate** (⌥-⇧) and **Obsidian+** (⌥-⌘⇧) modes")
+                Text("Used in **Translate** (⌃⌥⇧) and **Obsidian+** (⌃⌥⌘⇧) modes")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -91,25 +91,15 @@ struct GeneralTab: View {
             }
 
             Section("Shortcuts") {
-                Picker("Trigger key:", selection: $triggerKeyCode) {
-                    ForEach(KeyListener.triggerKeyOptions, id: \.code) { option in
-                        Text(option.name).tag(option.code)
-                    }
-                }
-                .onChange(of: triggerKeyCode) { _, newValue in
-                    UserDefaults.standard.set(newValue, forKey: "triggerKeyCode")
-                }
-
-                let display = KeyListener.triggerKeyOptions.first(where: { $0.code == triggerKeyCode })?.display ?? "⌥ + -"
                 VStack(alignment: .leading, spacing: 6) {
-                    shortcutRow(display, "Quick capture → paste")
-                    shortcutRow("\(display) + ⇧", "Translate → paste")
-                    shortcutRow("\(display) + ⌘", "Capture → Obsidian")
-                    shortcutRow("\(display) + ⌘ + ⇧", "Polish → Obsidian")
+                    shortcutRow("⌃⌥", "Quick capture → paste")
+                    shortcutRow("⌃⌥⇧", "Translate → paste")
+                    shortcutRow("⌃⌥⌘", "Capture → Obsidian")
+                    shortcutRow("⌃⌥⌘⇧", "Polish → Obsidian")
                 }
                 .font(.callout)
 
-                Text("Hold **Option + trigger key** to record, release to transcribe.\nRestart Skrivar after changing the trigger key.")
+                Text("Hold **Control + Option** to record, release to transcribe")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -361,7 +351,7 @@ struct HistoryTab: View {
                         .foregroundStyle(.tertiary)
                     Text("No transcriptions yet")
                         .foregroundStyle(.secondary)
-                    Text("Hold **⌥-** to start recording")
+                    Text("Hold **⌃⌥** to start recording")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
