@@ -4,11 +4,11 @@
   <img src="https://img.shields.io/badge/License-MIT-blue" alt="License"/>
 </p>
 
-<h1 align="center">✏️ Skrivar</h1>
+<h1 align="center">✦ Skrivar</h1>
 
 <p align="center">
   <strong>A native macOS menu bar app that turns speech into text — instantly.</strong><br/>
-  Hold a hotkey, speak, release. Your words appear wherever the cursor is.
+  Hold ⌃⌥, speak, release. Your words appear wherever the cursor is.
 </p>
 
 ---
@@ -16,30 +16,32 @@
 ## What it does
 
 Skrivar lives in your menu bar and listens when you tell it to.  
-Hold **⌥ + −** (Option + minus), speak into your mic, and release — transcribed text is pasted directly into the active app. No windows, no copy-paste, no context switching.
+Hold **⌃⌥** (Control + Option), speak into your mic, and release — transcribed text is pasted directly into the active app. No windows, no copy-paste, no context switching.
 
 **Four capture modes** via modifier combos:
 
 | Shortcut | Mode | What happens |
 |----------|------|-------------|
-| `⌥ -` | Quick | Transcribe → paste |
-| `⌥ ⇧ -` | Translate | Transcribe → Gemini polish → paste |
-| `⌥ ⌘ -` | Obsidian | Transcribe → new Obsidian note |
-| `⌥ ⌘ ⇧ -` | Obsidian+ | Transcribe → Gemini polish → Obsidian note |
+| `⌃⌥` | Quick | Transcribe → paste |
+| `⌃⌥⇧` | Translate | Transcribe → Gemini (Nynorsk/polish) → paste |
+| `⌃⌥⌘` | Obsidian | Transcribe → new Obsidian note |
+| `⌃⌥⌘⇧` | Obsidian+ | Transcribe → Gemini polish → Obsidian note |
 
 ## Features
 
 - **Push-to-talk** — hold to record, release to transcribe. No buttons to click.
 - **ElevenLabs Scribe v2** — high-quality multilingual speech-to-text.
-- **Gemini Flash polishing** — optional AI post-processing for cleaner output, especially useful for Nynorsk.
+- **Gemini Flash polishing** — optional AI post-processing for cleaner output, with dedicated Nynorsk translation support.
 - **Obsidian integration** — send transcriptions directly as new notes via URI scheme.
-- **Live waveform overlay** — Dynamic Island-style floating pill with real-time audio visualization.
+- **Live waveform overlay** — Dynamic Island-style floating pill with real-time audio levels.
+- **Custom app & menu bar icon** — waveform+cursor design, monochrome template for menu bar.
 - **Transcription history** — browse and copy your last 50 transcriptions.
 - **Multi-language** — Norwegian (Bokmål & Nynorsk), English, German, French, Spanish, or auto-detect.
 - **Sound effects** — audio feedback for record start/stop, success, and errors.
-- **Configurable trigger key** — choose between minus, right arrow, space, or return.
+- **Optional dock icon** — toggle in Settings; Skrivar always lives in the menu bar.
 - **Launch at Login** — optional auto-start via macOS ServiceManagement.
 - **Onboarding wizard** — guided first-launch setup with permission checks.
+- **Error retry** — automatic retry with user-friendly error messages.
 - **Secure storage** — API keys stored in macOS Keychain, never on disk.
 
 ## Requirements
@@ -62,39 +64,47 @@ swift build -c release
 
 The compiled binary will be at `.build/release/Skrivar`.
 
-### Build as .app bundle
+### Deploy as .app bundle
 
 ```bash
-./build_app.sh
-```
+# Build release
+swift build -c release
 
-This creates `Skrivar.app` in the `build/` directory, ready to drag into `/Applications`.
+# Create .app bundle
+mkdir -p /Applications/Skrivar.app/Contents/{MacOS,Resources}
+cp .build/release/Skrivar /Applications/Skrivar.app/Contents/MacOS/
+cp Resources/AppIcon.icns /Applications/Skrivar.app/Contents/Resources/
+
+# Info.plist is needed — see docs for template
+```
 
 ### First launch
 
-1. Open Skrivar — it appears in the menu bar as `✏️`.
-2. The onboarding wizard walks you through granting permissions and entering API keys.
-3. Hold **⌥ −**, speak, release. Done.
+1. Open Skrivar — it appears in the menu bar with a waveform icon.
+2. Grant **Accessibility** and **Microphone** permissions when prompted.
+3. Enter your ElevenLabs API key in Settings (and optionally Gemini key).
+4. Hold **⌃⌥**, speak, release. Done.
 
 ## Architecture
 
 ```
 Sources/Skrivar/
-├── SkrivarApp.swift          # App entry point, menu bar, recording lifecycle
-├── AppState.swift            # Observable state (settings, session stats)
-├── KeyListener.swift         # Global hotkey listener via CGEvent tap
-├── AudioRecorder.swift       # Mic capture → WAV buffer (AVAudioEngine)
-├── Transcriber.swift         # ElevenLabs Scribe v2 API client
-├── GeminiProcessor.swift     # Gemini Flash post-processing
-├── TextInserter.swift        # Paste text via Accessibility API / Cmd+V
-├── OverlayPanel.swift        # Floating pill overlay with waveform
-├── SoundManager.swift        # System sound effects
-├── SettingsView.swift        # SwiftUI settings window
-├── OnboardingView.swift      # First-launch wizard
-├── TranscriptionHistory.swift# Persistent history store
-├── ObsidianHelper.swift      # Obsidian URI scheme integration
-├── KeychainHelper.swift      # Secure API key storage
-└── LaunchAtLogin.swift       # SMAppService wrapper
+├── SkrivarApp.swift           # App entry, menu bar, recording lifecycle
+├── AppState.swift             # Observable state (settings, stats)
+├── KeyListener.swift          # Global hotkey via NSEvent monitor
+├── AudioRecorder.swift        # Mic capture → WAV (AVAudioEngine)
+├── Transcriber.swift          # ElevenLabs Scribe v2 API client
+├── GeminiProcessor.swift      # Gemini Flash post-processing
+├── TextInserter.swift         # Paste via Accessibility API / Cmd+V
+├── OverlayPanel.swift         # Floating pill overlay with waveform
+├── MenuBarIcon.swift          # Custom drawn menu bar icons
+├── SoundManager.swift         # System sound effects
+├── SettingsView.swift         # SwiftUI settings window
+├── OnboardingView.swift       # First-launch wizard
+├── TranscriptionHistory.swift # Persistent history store
+├── ObsidianHelper.swift       # Obsidian URI scheme integration
+├── KeychainHelper.swift       # Secure API key storage
+└── LaunchAtLogin.swift        # SMAppService wrapper
 ```
 
 ## Configuration
@@ -105,10 +115,11 @@ All settings are accessible from the menu bar → **Settings…**
 |---------|----------|-------|
 | ElevenLabs API key | Settings → API Keys | Required |
 | Gemini API key | Settings → API Keys | Optional |
-| Language | Settings → General | Default: Norwegian (Bokmål) |
-| Trigger key | Settings → General | Default: minus |
+| Language | Settings → General | Default: Norwegian |
+| Target language | Settings → General | Default: Nynorsk |
 | Sound effects | Settings → General | On by default |
-| Launch at Login | Settings → General | Off by default |
+| Launch at Login | Settings → System | Off by default |
+| Show dock icon | Settings → System | Off by default |
 | Obsidian vault/folder | Settings → Obsidian | Required for Obsidian modes |
 | Microphone input | Settings → General | Uses system default |
 
