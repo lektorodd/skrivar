@@ -81,8 +81,24 @@ enum GeminiProcessor {
         if targetLanguage == "same" {
             return """
             Du er ein språkassistent. Teksten under er transkribering frå tale. \
-            Rett opp eventuelle feil og gjer teksten meir lesbar. \
-            Ikkje endre meininga eller språket. Berre gje den retta teksten, utan forklaring.
+            Rett opp skrivefeil og gjer teksten meir lesbar. \
+            Ikkje endre språket eller meininga. Berre gje den retta teksten, utan forklaring.
+
+            Tekst: \(text)
+            """
+        }
+
+        if targetLanguage == "nynorsk" {
+            return """
+            Du er ein nynorskekspert. Teksten under er transkribert frå tale og er sannsynlegvis på bokmål. \
+            Du SKAL omsetje teksten til korrekt nynorsk. \
+            Døme på endringar: «er»→«er» (men verbbøying: «snakker»→«snakkar»), \
+            «jeg»→«eg», «ikke»→«ikkje», «hva»→«kva», «noe»→«noko», \
+            «det»→«det», «har»→«har», «kan»→«kan», «vil»→«vil», \
+            «dette»→«dette», «hvis»→«dersom», «også»→«òg», \
+            «-ene»→«-ane/-ene», «-tion»→«-sjon». \
+            Bruk korrekt nynorsk grammatikk og ordformer gjennomgåande. \
+            Gje BERRE den omsette teksten, utan forklaring eller kommentarar.
 
             Tekst: \(text)
             """
@@ -90,9 +106,8 @@ enum GeminiProcessor {
 
         return """
         Du er ein språkassistent. Teksten under er transkribering frå tale. \
-        Rett opp eventuelle feil og sørg for at teksten er korrekt \(targetLanguage). \
-        Dersom teksten ikkje allereie er på \(targetLanguage), omset den. \
-        Ikkje endre meininga. Berre gje den retta teksten, utan forklaring eller ekstra tekst.
+        Omset teksten til korrekt \(targetLanguage). \
+        Ikkje endre meininga. Gje BERRE den omsette teksten, utan forklaring eller ekstra tekst.
 
         Tekst: \(text)
         """
