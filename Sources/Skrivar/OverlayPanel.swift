@@ -25,7 +25,7 @@ final class OverlayPanel: NSPanel {
         self.level = .statusBar + 1
         self.isOpaque = false
         self.backgroundColor = .clear
-        self.hasShadow = true
+        self.hasShadow = false
         self.ignoresMouseEvents = true
         self.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
         self.isMovableByWindowBackground = false
@@ -33,6 +33,8 @@ final class OverlayPanel: NSPanel {
         let content = OverlayContent(state: overlayState)
         let hosting = NSHostingView(rootView: content)
         hosting.frame = NSRect(x: 0, y: 0, width: width, height: height)
+        hosting.wantsLayer = true
+        hosting.layer?.backgroundColor = .clear
         self.contentView = hosting
         self.hostingView = hosting
     }
