@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-03-14
+
+### Added
+- **Onboarding wizard** — 4-step first-launch setup (welcome, permissions with System Settings deeplinks, API keys, ready screen with shortcut reference)
+- **Launch at Login** toggle via SMAppService in Settings > General > System
+- **Configurable trigger key** — choose between minus, right arrow, space, or return via Settings (⌥ + key combos)
+- **Error retry** — automatic 1 retry with 1s delay for failed transcriptions
+- **User-friendly error messages** — actionable feedback for network, auth, rate limit, and server errors
+
 ## [0.2.0] - 2026-03-14
 
 Major UX, performance, and visual improvements.
