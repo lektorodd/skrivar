@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-03-14
+
+Major UX, performance, and visual improvements.
+
+### Added
+- **Live waveform overlay** with 7-bar audio visualization driven by real-time mic levels
+- **Recording timer** showing elapsed time (M:SS) in the overlay
+- **Transcription history** — last 50 transcriptions stored persistently with copy-to-clipboard
+- **History tab** in Settings with mode badges, timestamps, and per-entry copy button
+- **Sound effects** for recording lifecycle (Tink on start, Pop on stop, Glass on success, Basso on error)
+- **Sounds toggle** in Settings > General > Sound Effects
+- **Microphone input selector** in Settings — choose any available audio input device
+- **Audio engine pre-warm** at app launch for faster first recording
+
+### Changed
+- **Hotkey changed** from Right Option to **Control + Option** — Right Option alone was unusable on Norwegian keyboards (used for `[]`, `{}`, `»«`, `@`, etc.)
+- **Overlay animations** — spring entrance/exit with opacity and scale transitions
+- **Settings window** widened to accommodate new Microphone and Sound Effects sections
+- All shortcut labels updated throughout menu and Settings UI
+
+### Fixed
+- Accidental recording triggered when typing special characters on Norwegian keyboard layout
+- Audio buffer allocation now pre-reserves capacity for ~10 seconds to reduce reallocation
+
 ## [0.1.0] - 2026-03-14
 
 Initial release of Skrivar — a macOS menu bar speech-to-text app.
