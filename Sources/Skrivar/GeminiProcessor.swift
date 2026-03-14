@@ -1,0 +1,114 @@
+import Foundation
+import os.log
+
+private let logger = Logger(subsystem: "com.skrivar.app", category: "Gemini")
+
+/// Token usage from a Gemini API call.
+struct GeminiUsage {
+    let promptTokens: Int
+    let candidateTokens: Int
+    let totalTokens: Int
+}
+
+/// Post-processes transcribed text using Gemini Flash API.
+enum GeminiProcessor {
+    private static let endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+
+    /// Polish/translate transcribed text using Gemini Flash.
+    /// Returns the polished text and token usage.
+    static func process(
+        text: String,
+        apiKey: String,
+        targetLanguage: String
+    ) async throws -> (text: String, usage: GeminiUsage) {
+        guard !text.isEmpty else { return (text, GeminiUsage(promptTokens: 0, candidateTokens: 0, totalTokens: 0)) }
+
+        let prompt = buildPrompt(text: text, targetLanguage: targetLanguage)
+
+        let requestBody: [String: Any] = [
+            "contents": [
+                ["parts": [["text": prompt]]]
+            ],
+            "generationConfig": [
+                "temperature": 0.1,
+                "maxOutputTokens": 1024,
+            ]
+        ]
+
+        let url = "\(endpoint)?key=\(apiKey)"
+        var request = URLRequest(url: URL(string: url)!)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw GeminiError.invalidResponse
+        }
+        guard httpResponse.statusCode == 200 else {
+            let errorBody = String(data: data, encoding: .utf8) ?? "Unknown"
+            logger.error("Gemini API error \(httpResponse.statusCode): \(errorBody)")
+            throw GeminiError.apiError(statusCode: httpResponse.statusCode, message: errorBody)
+        }
+
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let candidates = json["candidates"] as? [[String: Any]],
+              let content = candidates.first?["content"] as? [String: Any],
+              let parts = content["parts"] as? [[String: Any]],
+              let resultText = parts.first?["text"] as? String
+        else {
+            throw GeminiError.parseError
+        }
+
+        // Parse token usage
+        var usage = GeminiUsage(promptTokens: 0, candidateTokens: 0, totalTokens: 0)
+        if let usageMeta = json["usageMetadata"] as? [String: Any] {
+            usage = GeminiUsage(
+                promptTokens: usageMeta["promptTokenCount"] as? Int ?? 0,
+                candidateTokens: usageMeta["candidatesTokenCount"] as? Int ?? 0,
+                totalTokens: usageMeta["totalTokenCount"] as? Int ?? 0
+            )
+        }
+
+        let cleaned = resultText.trimmingCharacters(in: .whitespacesAndNewlines)
+        logger.info("Gemini processed: \(text.count)→\(cleaned.count) chars, \(usage.totalTokens) tokens")
+        return (cleaned, usage)
+    }
+
+    /// targetLanguage is a plain name like "nynorsk", "bokmål", "english", or "same"
+    private static func buildPrompt(text: String, targetLanguage: String) -> String {
+        if targetLanguage == "same" {
+            return """
+            Du er ein språkassistent. Teksten under er transkribering frå tale. \
+            Rett opp eventuelle feil og gjer teksten meir lesbar. \
+            Ikkje endre meininga eller språket. Berre gje den retta teksten, utan forklaring.
+
+            Tekst: \(text)
+            """
+        }
+
+        return """
+        Du er ein språkassistent. Teksten under er transkribering frå tale. \
+        Rett opp eventuelle feil og sørg for at teksten er korrekt \(targetLanguage). \
+        Dersom teksten ikkje allereie er på \(targetLanguage), omset den. \
+        Ikkje endre meininga. Berre gje den retta teksten, utan forklaring eller ekstra tekst.
+
+        Tekst: \(text)
+        """
+    }
+}
+
+enum GeminiError: LocalizedError {
+    case invalidResponse
+    case apiError(statusCode: Int, message: String)
+    case parseError
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidResponse: return "Invalid Gemini response"
+        case .apiError(let code, let msg): return "Gemini error \(code): \(msg)"
+        case .parseError: return "Could not parse Gemini response"
+        }
+    }
+}

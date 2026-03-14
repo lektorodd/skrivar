@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Skrivar — Voice to Text, Anywhere on Your Mac</title>
+  <meta name="description" content="Skrivar is a lightweight macOS menu bar app that turns your voice into text anywhere. Powered by ElevenLabs and Gemini AI with Obsidian integration.">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✦</text></svg>">
+</head>
+<body>
+
+  <!-- ═══════════════ HERO ═══════════════ -->
+  <section class="hero" id="hero">
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="badge-dot"></span>
+        macOS Menu Bar App
+      </div>
+
+      <h1>
+        <span class="text-gradient">Skrivar</span>
+      </h1>
+
+      <p class="hero-tagline">
+        Voice to text, anywhere on your Mac.<br>
+        Hold a key, speak, release — your words appear at the cursor.
+      </p>
+
+      <!-- Animated waveform -->
+      <div class="hero-waveform" aria-hidden="true">
+        <div class="bar" style="--bar-h: 16px; animation-delay: 0.0s"></div>
+        <div class="bar" style="--bar-h: 28px; animation-delay: 0.1s"></div>
+        <div class="bar" style="--bar-h: 40px; animation-delay: 0.2s"></div>
+        <div class="bar" style="--bar-h: 20px; animation-delay: 0.3s"></div>
+        <div class="bar" style="--bar-h: 36px; animation-delay: 0.15s"></div>
+        <div class="bar" style="--bar-h: 48px; animation-delay: 0.25s"></div>
+        <div class="bar" style="--bar-h: 24px; animation-delay: 0.35s"></div>
+        <div class="bar" style="--bar-h: 44px; animation-delay: 0.05s"></div>
+        <div class="bar" style="--bar-h: 32px; animation-delay: 0.2s"></div>
+        <div class="bar" style="--bar-h: 18px; animation-delay: 0.3s"></div>
+        <div class="bar" style="--bar-h: 38px; animation-delay: 0.1s"></div>
+        <div class="bar" style="--bar-h: 26px; animation-delay: 0.25s"></div>
+        <div class="bar" style="--bar-h: 42px; animation-delay: 0.15s"></div>
+        <div class="bar" style="--bar-h: 20px; animation-delay: 0.35s"></div>
+        <div class="bar" style="--bar-h: 34px; animation-delay: 0.05s"></div>
+        <div class="bar" style="--bar-h: 14px; animation-delay: 0.2s"></div>
+        <div class="bar" style="--bar-h: 28px; animation-delay: 0.3s"></div>
+        <div class="bar" style="--bar-h: 46px; animation-delay: 0.1s"></div>
+        <div class="bar" style="--bar-h: 22px; animation-delay: 0.25s"></div>
+        <div class="bar" style="--bar-h: 36px; animation-delay: 0.15s"></div>
+      </div>
+
+      <!-- Keyboard hint -->
+      <div class="hero-shortcut">
+        <span class="key-combo">
+          Hold
+          <kbd>⌥</kbd>
+          <span style="color: var(--text-muted); font-size: 0.75rem">Right</span>
+          to record
+        </span>
+      </div>
+    </div>
+
+    <div class="scroll-indicator">
+      <span>Scroll</span>
+      <div class="scroll-line"></div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════ OVERLAY DEMO ═══════════════ -->
+  <section id="overlay-demo">
+    <div class="container">
+      <div class="reveal" style="text-align: center;">
+        <span class="section-label" style="justify-content: center;">Live Feedback</span>
+        <h2 class="section-title" style="text-align: center; margin: 0 auto var(--space-xs);">A floating pill that follows you</h2>
+        <p class="section-subtitle" style="text-align: center; margin: 0 auto;">
+          A glassmorphism overlay appears above your Dock while recording, with mode-aware colors and animated status.
+        </p>
+      </div>
+
+      <div class="overlay-demo reveal">
+        <div class="overlay-pill">
+          <div class="dots">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <span class="pill-label">Listening…</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════ CAPTURE MODES ═══════════════ -->
+  <section id="modes">
+    <div class="container">
+      <div class="reveal">
+        <span class="section-label">Capture Modes</span>
+        <h2 class="section-title">Four ways to capture<br>your voice</h2>
+        <p class="section-subtitle">
+          Same Right Option key, different modifier combos. Switch modes even mid-recording.
+        </p>
+      </div>
+
+      <div class="modes-grid stagger reveal">
+
+        <div class="mode-card" data-mode="quick">
+          <div class="mode-icon">⚡</div>
+          <h3>Quick Capture</h3>
+          <p>Transcribe and paste directly at your cursor. The fastest path from voice to text.</p>
+          <span class="mode-shortcut">Right ⌥</span>
+        </div>
+
+        <div class="mode-card" data-mode="translate">
+          <div class="mode-icon">✦</div>
+          <h3>Translate</h3>
+          <p>Transcribe, then polish or translate with Gemini AI before pasting. Perfect for Nynorsk.</p>
+          <span class="mode-shortcut">Right ⌥ + ⇧</span>
+        </div>
+
+        <div class="mode-card" data-mode="obsidian">
+          <div class="mode-icon">⬡</div>
+          <h3>Obsidian</h3>
+          <p>Voice capture sent straight to your Obsidian vault as a new note. Hands-free knowledge capture.</p>
+          <span class="mode-shortcut">Right ⌥ + ⌘</span>
+        </div>
+
+        <div class="mode-card" data-mode="polish">
+          <div class="mode-icon">⬡✦</div>
+          <h3>Obsidian+</h3>
+          <p>Polish with Gemini first, then create an Obsidian note. AI-refined ideas, instantly saved.</p>
+          <span class="mode-shortcut">Right ⌥ + ⌘ + ⇧</span>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════ HOW IT WORKS ═══════════════ -->
+  <section id="how-it-works">
+    <div class="container">
+      <div class="reveal" style="text-align: center;">
+        <span class="section-label" style="justify-content: center;">How It Works</span>
+        <h2 class="section-title" style="margin: 0 auto;">Three seconds to text</h2>
+      </div>
+
+      <div class="steps-row reveal stagger">
+        <div class="step">
+          <div class="step-visual">🎹</div>
+          <div class="step-number">1</div>
+          <h3>Hold the key</h3>
+          <p>Press and hold Right Option (+ modifiers for different modes). Recording starts instantly.</p>
+        </div>
+
+        <div class="step">
+          <div class="step-visual">🎙</div>
+          <div class="step-number">2</div>
+          <h3>Speak naturally</h3>
+          <p>Talk at your normal pace. ElevenLabs Scribe v2 handles the transcription with high accuracy.</p>
+        </div>
+
+        <div class="step">
+          <div class="step-visual">✨</div>
+          <div class="step-number">3</div>
+          <h3>Release — done</h3>
+          <p>Your text appears at the cursor, gets polished by Gemini, or lands in Obsidian. You choose.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════ FEATURES ═══════════════ -->
+  <section id="features">
+    <div class="container">
+      <div class="reveal">
+        <span class="section-label">Features</span>
+        <h2 class="section-title">Built for the way<br>you actually work</h2>
+        <p class="section-subtitle">
+          Every detail is designed to stay out of your way while being instantly available.
+        </p>
+      </div>
+
+      <div class="features-grid stagger reveal">
+
+        <div class="feature-card">
+          <span class="feature-icon">🔊</span>
+          <h3>ElevenLabs Scribe v2</h3>
+          <p>Industry-leading speech recognition with automatic language detection and EU data residency support.</p>
+        </div>
+
+        <div class="feature-card">
+          <span class="feature-icon">🧠</span>
+          <h3>Gemini AI Polish</h3>
+          <p>Optional post-processing with Gemini 2.5 Flash — fix errors, translate, or convert to proper Nynorsk.</p>
+        </div>
+
+        <div class="feature-card">
+          <span class="feature-icon">📓</span>
+          <h3>Obsidian Integration</h3>
+          <p>Send transcriptions directly to your Obsidian vault as timestamped notes via the URI scheme.</p>
+        </div>
+
+        <div class="feature-card">
+          <span class="feature-icon">🌍</span>
+          <h3>Multi-language</h3>
+          <p>Norwegian, English, German, French, Spanish, or auto-detect. Polish to Nynorsk, Bokmål, and more.</p>
+        </div>
+
+        <div class="feature-card">
+          <span class="feature-icon">⌨️</span>
+          <h3>Smart Text Insertion</h3>
+          <p>Inserts via macOS Accessibility API for precision, with automatic clipboard fallback when needed.</p>
+        </div>
+
+        <div class="feature-card">
+          <span class="feature-icon">📊</span>
+          <h3>Usage Statistics</h3>
+          <p>Track session and all-time transcriptions, characters typed, and Gemini token usage.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════ KEYBOARD SHORTCUTS ═══════════════ -->
+  <section id="shortcuts">
+    <div class="container">
+      <div class="reveal">
+        <span class="section-label">Keyboard Reference</span>
+        <h2 class="section-title">One key, four modes</h2>
+        <p class="section-subtitle">
+          All modes use the Right Option key as the anchor — add modifiers to change behavior.
+        </p>
+      </div>
+
+      <div class="shortcuts-panel reveal">
+        <div class="shortcut-rows stagger reveal">
+
+          <div class="shortcut-row">
+            <div class="shortcut-keys">
+              <kbd>⌥ Right</kbd>
+            </div>
+            <span class="shortcut-desc">Quick capture → paste at cursor</span>
+            <span class="shortcut-badge" data-type="paste">Paste</span>
+          </div>
+
+          <div class="shortcut-row">
+            <div class="shortcut-keys">
+              <kbd>⌥ Right</kbd>
+              <kbd>⇧</kbd>
+            </div>
+            <span class="shortcut-desc">Translate / polish → paste at cursor</span>
+            <span class="shortcut-badge" data-type="ai">AI</span>
+          </div>
+
+          <div class="shortcut-row">
+            <div class="shortcut-keys">
+              <kbd>⌥ Right</kbd>
+              <kbd>⌘</kbd>
+            </div>
+            <span class="shortcut-desc">Capture → create Obsidian note</span>
+            <span class="shortcut-badge" data-type="obsidian">Obsidian</span>
+          </div>
+
+          <div class="shortcut-row">
+            <div class="shortcut-keys">
+              <kbd>⌥ Right</kbd>
+              <kbd>⌘</kbd>
+              <kbd>⇧</kbd>
+            </div>
+            <span class="shortcut-desc">Polish with Gemini → Obsidian note</span>
+            <span class="shortcut-badge" data-type="both">AI + Obsidian</span>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════ TECH STACK ═══════════════ -->
+  <section id="tech">
+    <div class="container" style="text-align: center;">
+      <div class="reveal">
+        <span class="section-label" style="justify-content: center;">Built With</span>
+        <h2 class="section-title" style="margin: 0 auto;">Lightweight, native, private</h2>
+        <p class="section-subtitle" style="margin: 0 auto;">
+          A pure Swift menu bar app — no Electron, no browser, no telemetry. Your audio goes to ElevenLabs for transcription (with EU residency option) and optionally to Gemini for polishing. Nothing else.
+        </p>
+      </div>
+
+      <div class="tech-row reveal stagger">
+        <span class="tech-chip"><span class="chip-icon">🍎</span> Swift & SwiftUI</span>
+        <span class="tech-chip"><span class="chip-icon">🎙</span> ElevenLabs Scribe v2</span>
+        <span class="tech-chip"><span class="chip-icon">✦</span> Gemini 2.5 Flash</span>
+        <span class="tech-chip"><span class="chip-icon">📓</span> Obsidian URI</span>
+        <span class="tech-chip"><span class="chip-icon">🔑</span> macOS Keychain</span>
+        <span class="tech-chip"><span class="chip-icon">♿️</span> Accessibility API</span>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════ FOOTER ═══════════════ -->
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-content">
+        <span class="footer-logo">✦ Skrivar</span>
+        <p class="footer-text">
+          A macOS utility for turning speech into text —
+          <a href="https://github.com">built with care</a>.
+        </p>
+      </div>
+    </div>
+  </footer>
+
+
+  <!-- ═══════════════ SCRIPTS ═══════════════ -->
+  <script>
+    // Scroll-triggered reveal
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, {
+      threshold: 0.12,
+      rootMargin: '0px 0px -40px 0px'
+    });
+
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+    // Rotate overlay pill modes
+    const modes = [
+      { label: 'Listening…',   color: '#e8eaf0' },
+      { label: '✦ Listening…', color: '#00d1b2' },
+      { label: 'Transcribing…', color: '#e8eaf0' },
+      { label: '✦ Polishing…', color: '#00d1b2' },
+      { label: '⬡ Listening…', color: '#7c3aed' },
+      { label: '⬡✦ Listening…', color: '#667aea' },
+    ];
+    let modeIndex = 0;
+    const pillLabel = document.querySelector('.pill-label');
+    const dots = document.querySelectorAll('.overlay-pill .dot');
+
+    if (pillLabel) {
+      setInterval(() => {
+        modeIndex = (modeIndex + 1) % modes.length;
+        pillLabel.textContent = modes[modeIndex].label;
+        dots.forEach(d => d.style.background = modes[modeIndex].color);
+      }, 2400);
+    }
+  </script>
+
+</body>
+</html>
