@@ -126,6 +126,13 @@ struct GeneralTab: View {
                     set: { show in
                         UserDefaults.standard.set(show, forKey: "showDockIcon")
                         NSApp.setActivationPolicy(show ? .regular : .accessory)
+                        // Re-show windows after policy change (accessory hides them)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            NSApp.activate(ignoringOtherApps: true)
+                            for window in NSApp.windows where window.title.contains("Settings") {
+                                window.makeKeyAndOrderFront(nil)
+                            }
+                        }
                     }
                 ))
 
