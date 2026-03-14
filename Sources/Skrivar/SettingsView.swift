@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// Settings view with tabbed layout: General, API Keys, Stats.
+/// Settings view with tabbed layout: General, API Keys, History, Stats.
 struct SettingsView: View {
     @Bindable var appState: AppState
+    let history: TranscriptionHistory
 
     var body: some View {
         TabView {
@@ -12,10 +13,13 @@ struct SettingsView: View {
             APIKeysTab(appState: appState)
                 .tabItem { Label("API Keys", systemImage: "key") }
 
+            HistoryTab(history: history)
+                .tabItem { Label("History", systemImage: "clock.arrow.circlepath") }
+
             StatsTab(appState: appState)
                 .tabItem { Label("Stats", systemImage: "chart.bar") }
         }
-        .frame(width: 480, height: 540)
+        .frame(width: 520, height: 540)
     }
 }
 
@@ -300,5 +304,141 @@ struct StatsTab: View {
         formatter.numberStyle = .decimal
         formatter.groupingSeparator = " "
         return formatter.string(from: NSNumber(value: n)) ?? "\(n)"
+    }
+}
+
+// MARK: - History Tab
+
+struct HistoryTab: View {
+    let history: TranscriptionHistory
+    @State private var showClearConfirm = false
+    @State private var copiedId: UUID?
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if history.entries.isEmpty {
+                Spacer()
+                VStack(spacing: 8) {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .font(.system(size: 32))
+                        .foregroundStyle(.tertiary)
+                    Text("No transcriptions yet")
+                        .foregroundStyle(.secondary)
+                    Text("Hold **⌃⌥** to start recording")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                Spacer()
+            } else {
+                List {
+                    ForEach(history.entries) { entry in
+                        historyRow(entry)
+                    }
+                }
+                .listStyle(.inset(alternatesRowBackgrounds: true))
+
+                // Footer with count and clear button
+                HStack {
+                    Text("\(history.entries.count) transcriptions")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Spacer()
+
+                    Button("Clear All") {
+                        showClearConfirm = true
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .alert("Clear transcription history?", isPresented: $showClearConfirm) {
+                        Button("Cancel", role: .cancel) { }
+                        Button("Clear", role: .destructive) {
+                            history.clear()
+                        }
+                    } message: {
+                        Text("This cannot be undone.")
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+            }
+        }
+    }
+
+    private func historyRow(_ entry: TranscriptionEntry) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                // Mode badge
+                Text(entry.mode)
+                    .font(.system(size: 9, weight: .semibold, design: .rounded))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(modeBadgeColor(entry.mode).opacity(0.2))
+                    .foregroundStyle(modeBadgeColor(entry.mode))
+                    .clipShape(Capsule())
+
+                if entry.wasPolished {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.orange)
+                }
+
+                Spacer()
+
+                Text(formatTimestamp(entry.timestamp))
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(.tertiary)
+
+                // Copy button
+                Button(action: {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(entry.text, forType: .string)
+                    copiedId = entry.id
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        if copiedId == entry.id { copiedId = nil }
+                    }
+                }) {
+                    Image(systemName: copiedId == entry.id ? "checkmark" : "doc.on.doc")
+                        .font(.system(size: 10))
+                        .foregroundStyle(copiedId == entry.id ? .green : .secondary)
+                }
+                .buttonStyle(.borderless)
+            }
+
+            Text(entry.text)
+                .font(.system(size: 11))
+                .lineLimit(3)
+                .foregroundStyle(.primary)
+
+            Text("\(entry.charCount) chars")
+                .font(.system(size: 9))
+                .foregroundStyle(.quaternary)
+        }
+        .padding(.vertical, 2)
+    }
+
+    private func modeBadgeColor(_ mode: String) -> Color {
+        switch mode {
+        case "Quick":     return .white
+        case "Translate": return Color(red: 0, green: 0.82, blue: 0.70)
+        case "Obsidian":  return Color(red: 0.49, green: 0.23, blue: 0.93)
+        case "Obsidian+": return Color(red: 0.40, green: 0.50, blue: 0.90)
+        default:          return .gray
+        }
+    }
+
+    private func formatTimestamp(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+
+        let calendar = Calendar.current
+        if calendar.isDateInToday(date) {
+            return formatter.string(from: date)
+        } else if calendar.isDateInYesterday(date) {
+            return "Yesterday \(formatter.string(from: date))"
+        } else {
+            formatter.dateFormat = "d MMM HH:mm"
+            return formatter.string(from: date)
+        }
     }
 }

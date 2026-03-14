@@ -12,6 +12,7 @@ struct SkrivarApp: App {
     private let keyListener = KeyListener()
     private let recorder = AudioRecorder()
     private let overlay = OverlayPanel()
+    private let history = TranscriptionHistory()
     @State private var iconPhase: Double = 0.0
     @State private var iconTimer: Timer?
 
@@ -53,6 +54,13 @@ struct SkrivarApp: App {
             }
         }
 
+        // Wire audio level → overlay waveform
+        recorder.onAudioLevel = { [self] level in
+            DispatchQueue.main.async {
+                overlay.updateAudioLevel(level)
+            }
+        }
+
         keyListener.start()
         recorder.prewarm()
         logger.info("Skrivar started")
@@ -64,7 +72,7 @@ struct SkrivarApp: App {
         }
 
         Window("Skrivar Settings", id: "settings") {
-            SettingsView(appState: appState)
+            SettingsView(appState: appState, history: history)
         }
         .windowResizability(.contentSize)
         .defaultPosition(.center)
@@ -250,6 +258,7 @@ struct SkrivarApp: App {
                         folder: appState.obsidianFolder
                     )
                     await MainActor.run {
+                        history.add(mode: mode, text: finalText, wasPolished: shouldPolish)
                         appState.recordTranscription(chars: finalText.count, method: nil, geminiUsage: geminiUsage)
                         appState.statusMessage = success
                             ? "✓ \(finalText.count) chars → Obsidian"
@@ -260,6 +269,7 @@ struct SkrivarApp: App {
                 } else {
                     let method = TextInserter.insert(finalText)
                     await MainActor.run {
+                        history.add(mode: mode, text: finalText, wasPolished: shouldPolish)
                         appState.recordTranscription(chars: finalText.count, method: method, geminiUsage: geminiUsage)
                         appState.statusMessage = "✓ \(finalText.count) chars via \(method.rawValue)"
                         overlay.hide()
