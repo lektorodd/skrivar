@@ -142,9 +142,22 @@ final class AudioRecorder {
     }
 
     /// Pre-warm the audio engine to eliminate first-recording latency.
+    /// Skips gracefully if mic permission isn't granted yet.
     func prewarm() {
-        engine.prepare()
-        logger.info("Audio engine pre-warmed")
+        switch AVCaptureDevice.authorizationStatus(for: .audio) {
+        case .authorized:
+            engine.prepare()
+            logger.info("Audio engine pre-warmed")
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .audio) { [self] granted in
+                if granted {
+                    engine.prepare()
+                    logger.info("Audio engine pre-warmed after permission grant")
+                }
+            }
+        default:
+            logger.warning("Audio engine pre-warm skipped — mic permission not granted")
+        }
     }
 
     /// Start recording from the configured microphone.
