@@ -4,28 +4,33 @@ import os.log
 
 private let logger = Logger(subsystem: "com.skrivar.app", category: "KeyListener")
 
-/// Capture modes determined by modifier keys held with Right Option.
+/// Capture modes determined by modifier keys held with ⌥→.
 enum CaptureMode: String {
-    case quick            = "Quick"           // Right ⌥ only
-    case translate        = "Translate"       // Right ⌥ + ⇧
-    case obsidian         = "Obsidian"        // Right ⌥ + ⌘
-    case obsidianPolished = "Obsidian+"       // Right ⌥ + ⌘ + ⇧
+    case quick            = "Quick"           // ⌥ + →
+    case translate        = "Translate"       // ⌥ + → + ⇧
+    case obsidian         = "Obsidian"        // ⌥ + → + ⌘
+    case obsidianPolished = "Obsidian+"       // ⌥ + → + ⌘ + ⇧
 }
 
-/// Global keyboard listener for Right Option key combos using CGEvent tap.
+/// Global keyboard listener for Option + Right Arrow combos using CGEvent tap.
 final class KeyListener {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     var onRecordStart: ((CaptureMode) -> Void)?
     var onRecordStop: (() -> Void)?
-    /// Called when the mode changes while recording (e.g. Shift pressed after Right ⌥)
+    /// Called when the mode changes while recording (e.g. Shift pressed/released)
     var onModeChange: ((CaptureMode) -> Void)?
     private var isKeyDown = false
     private var activeMode: CaptureMode = .quick
+    /// Track whether Option is currently held (for arrow key detection)
+    private var optionHeld = false
 
     func start() {
+        // Listen for flagsChanged (modifiers) AND keyDown/keyUp (arrow key)
         let eventMask: CGEventMask =
             (1 << CGEventType.flagsChanged.rawValue)
+            | (1 << CGEventType.keyDown.rawValue)
+            | (1 << CGEventType.keyUp.rawValue)
 
         let refcon = Unmanaged.passUnretained(self).toOpaque()
 
@@ -53,7 +58,7 @@ final class KeyListener {
         logger.info("Event tap started successfully")
     }
 
-    /// Compute the capture mode from current modifier flags (excluding Control + Option which are the trigger).
+    /// Compute the capture mode from current modifier flags (excluding Option which is the trigger).
     private func computeMode(flags: CGEventFlags) -> CaptureMode {
         let hasShift = flags.contains(.maskShift)
         let hasCommand = flags.contains(.maskCommand)
@@ -65,51 +70,60 @@ final class KeyListener {
         }
     }
 
-    /// Check if the trigger combo (Control + Option) is active.
-    private func isTriggerComboDown(_ flags: CGEventFlags) -> Bool {
-        return flags.contains(.maskControl) && flags.contains(.maskAlternate)
-    }
-
     private func handleEvent(_ event: CGEvent) -> Unmanaged<CGEvent>? {
         let flags = event.flags
         let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
+        let eventType = event.type
 
-        // Trigger keys: Right Option (61) or any Control (59=Left, 62=Right)
-        // Recording starts when BOTH Control + Right Option are held together.
-        // This avoids conflicts with Norwegian keyboards where Right Option alone
-        // types special characters: [] {} »« @ $ | \ ~
-        let isTriggerKey = (keyCode == 61 || keyCode == 59 || keyCode == 62)
+        // Track Option key state via flagsChanged
+        if eventType == .flagsChanged {
+            let optionNow = flags.contains(.maskAlternate)
 
-        if isTriggerKey {
-            if isTriggerComboDown(flags) && !isKeyDown {
-                // Both Control + Option are now held — start recording
-                isKeyDown = true
-                activeMode = computeMode(flags: flags)
-                logger.info("⌃⌥ pressed — mode: \(self.activeMode.rawValue)")
-                DispatchQueue.main.async { [weak self] in
-                    guard let self else { return }
-                    self.onRecordStart?(self.activeMode)
-                }
-            } else if !isTriggerComboDown(flags) && isKeyDown {
-                // Either Control or Option was released — stop recording
+            if !optionNow && optionHeld && isKeyDown {
+                // Option was released while recording — stop
                 isKeyDown = false
-                logger.info("⌃⌥ released — stopping (\(self.activeMode.rawValue))")
+                optionHeld = false
+                logger.info("⌥ released — stopping (\(self.activeMode.rawValue))")
                 DispatchQueue.main.async { [weak self] in
                     self?.onRecordStop?()
+                }
+                return Unmanaged.passUnretained(event)
+            }
+
+            optionHeld = optionNow
+
+            // While recording, re-evaluate mode if Shift/Cmd changes
+            // keyCodes: 56=LShift, 60=RShift, 55=LCmd, 54=RCmd
+            if isKeyDown && (keyCode == 56 || keyCode == 60 || keyCode == 55 || keyCode == 54) {
+                let newMode = computeMode(flags: flags)
+                if newMode != activeMode {
+                    activeMode = newMode
+                    logger.info("Mode changed while recording → \(newMode.rawValue)")
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self else { return }
+                        self.onModeChange?(self.activeMode)
+                    }
                 }
             }
         }
 
-        // While recording, re-evaluate mode if Shift/Cmd changes
-        // keyCodes: 56=LShift, 60=RShift, 55=LCmd, 54=RCmd
-        if isKeyDown && (keyCode == 56 || keyCode == 60 || keyCode == 55 || keyCode == 54) {
-            let newMode = computeMode(flags: flags)
-            if newMode != activeMode {
-                activeMode = newMode
-                logger.info("Mode changed while recording → \(newMode.rawValue)")
+        // Right Arrow key (keycode 124) — start/stop recording when Option is held
+        if keyCode == 124 {
+            if eventType == .keyDown && optionHeld && !isKeyDown {
+                // ⌥ + → pressed — start recording
+                isKeyDown = true
+                activeMode = computeMode(flags: flags)
+                logger.info("⌥→ pressed — mode: \(self.activeMode.rawValue)")
                 DispatchQueue.main.async { [weak self] in
                     guard let self else { return }
-                    self.onModeChange?(self.activeMode)
+                    self.onRecordStart?(self.activeMode)
+                }
+            } else if eventType == .keyUp && isKeyDown {
+                // → released — stop recording
+                isKeyDown = false
+                logger.info("⌥→ released — stopping (\(self.activeMode.rawValue))")
+                DispatchQueue.main.async { [weak self] in
+                    self?.onRecordStop?()
                 }
             }
         }
