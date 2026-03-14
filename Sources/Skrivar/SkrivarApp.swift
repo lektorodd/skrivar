@@ -83,8 +83,10 @@ struct SkrivarApp: App {
     }
 
     var body: some Scene {
-        MenuBarExtra("Skrivar", systemImage: menuBarIcon) {
+        MenuBarExtra {
             menuContent
+        } label: {
+            Image(nsImage: menuBarNSImage)
         }
 
         Window("Skrivar Settings", id: "settings") {
@@ -100,8 +102,8 @@ struct SkrivarApp: App {
         .defaultPosition(.center)
     }
 
-    private var menuBarIcon: String {
-        appState.isRecording ? "waveform" : "character.cursor.ibeam"
+    private var menuBarNSImage: NSImage {
+        appState.isRecording ? MenuBarIcon.recording() : MenuBarIcon.idle()
     }
 
     @ViewBuilder
