@@ -64,6 +64,17 @@ struct SkrivarApp: App {
         keyListener.start()
         recorder.prewarm()
         logger.info("Skrivar started")
+
+        // Show onboarding on first launch
+        if !UserDefaults.standard.bool(forKey: "onboardingCompleted") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                if let url = URL(string: "skrivar://onboarding") {
+                    NSWorkspace.shared.open(url)
+                }
+                // Fallback: open via Environment
+                NSApp.windows.first(where: { $0.title.contains("Welcome") })?.makeKeyAndOrderFront(nil)
+            }
+        }
     }
 
     var body: some Scene {
@@ -73,6 +84,12 @@ struct SkrivarApp: App {
 
         Window("Skrivar Settings", id: "settings") {
             SettingsView(appState: appState, history: history)
+        }
+        .windowResizability(.contentSize)
+        .defaultPosition(.center)
+
+        Window("Welcome to Skrivar", id: "onboarding") {
+            OnboardingView(appState: appState)
         }
         .windowResizability(.contentSize)
         .defaultPosition(.center)
@@ -210,13 +227,40 @@ struct SkrivarApp: App {
                     }
                     return
                 }
+                // Step 1: Transcribe with ElevenLabs (with 1 retry on failure)
+                var text = ""
+                var lastError: Error?
 
-                // Step 1: Transcribe via ElevenLabs (always)
-                let text = try await Transcriber.transcribe(
-                    wavData: wavData,
-                    apiKey: apiKey,
-                    languageCode: appState.languageCode
-                )
+                for attempt in 1...2 {
+                    do {
+                        text = try await Transcriber.transcribe(
+                            wavData: wavData,
+                            apiKey: apiKey,
+                            languageCode: appState.languageCode
+                        )
+                        lastError = nil
+                        break
+                    } catch {
+                        lastError = error
+                        if attempt == 1 {
+                            logger.warning("Transcription attempt 1 failed, retrying: \(error.localizedDescription)")
+                            await MainActor.run {
+                                overlay.updateStatus("Retrying…")
+                            }
+                            try? await Task.sleep(for: .seconds(1))
+                        }
+                    }
+                }
+
+                if let error = lastError {
+                    let userMessage = Self.friendlyErrorMessage(error)
+                    await MainActor.run {
+                        appState.statusMessage = userMessage
+                        overlay.hide()
+                        SoundManager.play(.error)
+                    }
+                    return
+                }
 
                 guard !text.isEmpty else {
                     await MainActor.run {
@@ -288,12 +332,32 @@ struct SkrivarApp: App {
             } catch {
                 logger.error("Transcription error: \(error.localizedDescription)")
                 await MainActor.run {
-                    appState.statusMessage = "Error: \(error.localizedDescription)"
+                    appState.statusMessage = Self.friendlyErrorMessage(error)
                     overlay.hide()
                     SoundManager.play(.error)
                 }
             }
         }
+    }
+
+    /// Convert errors into user-friendly actionable messages.
+    private static func friendlyErrorMessage(_ error: Error) -> String {
+        let desc = error.localizedDescription.lowercased()
+
+        if desc.contains("api key") || desc.contains("401") || desc.contains("403") {
+            return "❌ Invalid API key — check Settings"
+        }
+        if desc.contains("network") || desc.contains("connection") || desc.contains("timed out")
+            || desc.contains("offline") || desc.contains("not connected") {
+            return "❌ No internet — check your connection"
+        }
+        if desc.contains("429") || desc.contains("rate limit") {
+            return "❌ Rate limited — wait a moment"
+        }
+        if desc.contains("500") || desc.contains("502") || desc.contains("503") {
+            return "❌ Server error — try again shortly"
+        }
+        return "❌ \(error.localizedDescription)"
     }
 
     private func showNotification(title: String, message: String) {

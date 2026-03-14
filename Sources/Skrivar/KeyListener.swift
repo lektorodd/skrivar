@@ -12,7 +12,7 @@ enum CaptureMode: String {
     case obsidianPolished = "Obsidian+"       // ⌥ + - + ⌘ + ⇧
 }
 
-/// Global keyboard listener for Option + minus combos using CGEvent tap.
+/// Global keyboard listener for Option + trigger key combos using CGEvent tap.
 final class KeyListener {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
@@ -22,11 +22,25 @@ final class KeyListener {
     var onModeChange: ((CaptureMode) -> Void)?
     private var isKeyDown = false
     private var activeMode: CaptureMode = .quick
-    /// Track whether Option is currently held (for arrow key detection)
+    /// Track whether Option is currently held
     private var optionHeld = false
+    /// The keycode of the trigger key (read from UserDefaults)
+    private var triggerKeyCode: Int64 = 27 // default: minus
+
+    /// Available trigger key options.
+    static let triggerKeyOptions: [(name: String, code: Int, display: String)] = [
+        ("Minus (-)",      27,  "⌥ + -"),
+        ("Right Arrow (→)", 124, "⌥ + →"),
+        ("Space",          49,  "⌥ + Space"),
+        ("Return",         36,  "⌥ + Return"),
+    ]
 
     func start() {
-        // Listen for flagsChanged (modifiers) AND keyDown/keyUp (arrow key)
+        // Load configured trigger key
+        let savedCode = UserDefaults.standard.integer(forKey: "triggerKeyCode")
+        triggerKeyCode = savedCode > 0 ? Int64(savedCode) : 27
+
+        // Listen for flagsChanged (modifiers) AND keyDown/keyUp (trigger key)
         let eventMask: CGEventMask =
             (1 << CGEventType.flagsChanged.rawValue)
             | (1 << CGEventType.keyDown.rawValue)
@@ -107,8 +121,8 @@ final class KeyListener {
             }
         }
 
-        // Minus key (keycode 27) — start/stop recording when Option is held
-        if keyCode == 27 {
+        // Trigger key — start/stop recording when Option is held
+        if keyCode == triggerKeyCode {
             if eventType == .keyDown && optionHeld && !isKeyDown {
                 // ⌥ + - pressed — start recording
                 isKeyDown = true

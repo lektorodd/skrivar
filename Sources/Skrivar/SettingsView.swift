@@ -28,6 +28,10 @@ struct SettingsView: View {
 struct GeneralTab: View {
     @Bindable var appState: AppState
     @State private var soundsEnabled = SoundManager.isEnabled
+    @State private var triggerKeyCode: Int = {
+        let saved = UserDefaults.standard.integer(forKey: "triggerKeyCode")
+        return saved > 0 ? saved : 27
+    }()
 
     var body: some View {
         Form {
@@ -87,15 +91,25 @@ struct GeneralTab: View {
             }
 
             Section("Shortcuts") {
+                Picker("Trigger key:", selection: $triggerKeyCode) {
+                    ForEach(KeyListener.triggerKeyOptions, id: \.code) { option in
+                        Text(option.name).tag(option.code)
+                    }
+                }
+                .onChange(of: triggerKeyCode) { _, newValue in
+                    UserDefaults.standard.set(newValue, forKey: "triggerKeyCode")
+                }
+
+                let display = KeyListener.triggerKeyOptions.first(where: { $0.code == triggerKeyCode })?.display ?? "⌥ + -"
                 VStack(alignment: .leading, spacing: 6) {
-                    shortcutRow("⌥ + -", "Quick capture → paste")
-                    shortcutRow("⌥ + - + ⇧", "Translate → paste")
-                    shortcutRow("⌥ + - + ⌘", "Capture → Obsidian")
-                    shortcutRow("⌥ + - + ⌘ + ⇧", "Polish → Obsidian")
+                    shortcutRow(display, "Quick capture → paste")
+                    shortcutRow("\(display) + ⇧", "Translate → paste")
+                    shortcutRow("\(display) + ⌘", "Capture → Obsidian")
+                    shortcutRow("\(display) + ⌘ + ⇧", "Polish → Obsidian")
                 }
                 .font(.callout)
 
-                Text("Hold **Option + minus** to record, release to transcribe")
+                Text("Hold **Option + trigger key** to record, release to transcribe.\nRestart Skrivar after changing the trigger key.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -107,6 +121,17 @@ struct GeneralTab: View {
                     }
 
                 Text("Audio feedback for recording start, stop, and transcription results")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section("System") {
+                Toggle("Launch at login", isOn: Binding(
+                    get: { LaunchAtLogin.isEnabled },
+                    set: { LaunchAtLogin.isEnabled = $0 }
+                ))
+
+                Text("Start Skrivar automatically when you log in")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
