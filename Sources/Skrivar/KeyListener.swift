@@ -10,6 +10,17 @@ enum CaptureMode: String {
     case translate        = "Translate"       // Trigger + ⇧
     case obsidian         = "Obsidian"        // Trigger + ⌘
     case obsidianPolished = "Obsidian+"       // Trigger + ⌘ + ⇧
+
+    /// Priority for mode locking — higher value = more specific mode.
+    /// Prevents accidental downgrade when modifier keys are released out of order.
+    var priority: Int {
+        switch self {
+        case .quick: return 0
+        case .translate: return 1
+        case .obsidian: return 2
+        case .obsidianPolished: return 3
+        }
+    }
 }
 
 /// Global keyboard listener using NSEvent monitors.

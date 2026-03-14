@@ -5,6 +5,9 @@ import SwiftUI
 final class AppState {
     var isRecording = false
     var currentMode: CaptureMode = .quick
+    /// Mode locked at recording start — used for transcription decisions
+    /// (prevents mode loss when user releases Shift before ⌃⌥)
+    var lockedMode: CaptureMode = .quick
     var pendingRecordTask: DispatchWorkItem?
     var statusMessage = "Ready"
     var apiKeySet = false

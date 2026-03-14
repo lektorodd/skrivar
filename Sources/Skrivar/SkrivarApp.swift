@@ -49,6 +49,11 @@ struct SkrivarApp: App {
 
         keyListener.onModeChange = { [self] mode in
             appState.currentMode = mode
+            // Only upgrade the locked mode (never downgrade)
+            // This prevents losing translate mode when Shift is released before ⌃⌥
+            if mode.priority > appState.lockedMode.priority {
+                appState.lockedMode = mode
+            }
             if appState.isRecording {
                 overlay.show(mode: mode)
             }
@@ -193,6 +198,7 @@ struct SkrivarApp: App {
             SoundManager.play(.recordStart)
             appState.isRecording = true
             appState.currentMode = mode
+            appState.lockedMode = mode  // Lock mode at start
             appState.statusMessage = "\(mode.rawValue) — Recording..."
             DispatchQueue.main.async {
                 self.overlay.show(mode: mode)
@@ -208,7 +214,7 @@ struct SkrivarApp: App {
     private func stopRecording() {
         guard appState.isRecording else { return }
 
-        let mode = appState.currentMode
+        let mode = appState.lockedMode  // Use locked mode, not current
         let wavData = recorder.stop()
         SoundManager.play(.recordStop)
         appState.isRecording = false
