@@ -27,6 +27,7 @@ struct SettingsView: View {
 
 struct GeneralTab: View {
     @Bindable var appState: AppState
+    @State private var soundsEnabled = SoundManager.isEnabled
 
     var body: some View {
         Form {
@@ -95,6 +96,17 @@ struct GeneralTab: View {
                 .font(.callout)
 
                 Text("Hold **Control + Option** to record, release to transcribe")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section("Sound Effects") {
+                Toggle("Play sounds", isOn: $soundsEnabled)
+                    .onChange(of: soundsEnabled) { _, newValue in
+                        SoundManager.isEnabled = newValue
+                    }
+
+                Text("Audio feedback for recording start, stop, and transcription results")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

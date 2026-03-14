@@ -166,6 +166,7 @@ struct SkrivarApp: App {
 
         do {
             try recorder.start()
+            SoundManager.play(.recordStart)
             appState.isRecording = true
             appState.currentMode = mode
             appState.statusMessage = "\(mode.rawValue) — Recording..."
@@ -174,6 +175,7 @@ struct SkrivarApp: App {
             }
             logger.info("Recording started — mode: \(mode.rawValue)")
         } catch {
+            SoundManager.play(.error)
             logger.error("Failed to start recording: \(error.localizedDescription)")
             appState.statusMessage = "Mic error"
         }
@@ -184,6 +186,7 @@ struct SkrivarApp: App {
 
         let mode = appState.currentMode
         let wavData = recorder.stop()
+        SoundManager.play(.recordStop)
         appState.isRecording = false
         appState.statusMessage = "Transcribing..."
         logger.info("Recording stopped, \(wavData.count) bytes, mode: \(mode.rawValue)")
@@ -264,6 +267,7 @@ struct SkrivarApp: App {
                             ? "✓ \(finalText.count) chars → Obsidian"
                             : "❌ Obsidian error"
                         overlay.hide()
+                        SoundManager.play(success ? .transcribeDone : .error)
                     }
                     logger.info("Sent \(finalText.count) chars to Obsidian")
                 } else {
@@ -273,6 +277,7 @@ struct SkrivarApp: App {
                         appState.recordTranscription(chars: finalText.count, method: method, geminiUsage: geminiUsage)
                         appState.statusMessage = "✓ \(finalText.count) chars via \(method.rawValue)"
                         overlay.hide()
+                        SoundManager.play(.transcribeDone)
                     }
                     logger.info("Pasted \(finalText.count) chars via \(method.rawValue)")
                 }
@@ -285,6 +290,7 @@ struct SkrivarApp: App {
                 await MainActor.run {
                     appState.statusMessage = "Error: \(error.localizedDescription)"
                     overlay.hide()
+                    SoundManager.play(.error)
                 }
             }
         }
