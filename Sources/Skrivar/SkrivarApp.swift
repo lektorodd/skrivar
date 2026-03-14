@@ -54,6 +54,7 @@ struct SkrivarApp: App {
         }
 
         keyListener.start()
+        recorder.prewarm()
         logger.info("Skrivar started")
     }
 
@@ -101,10 +102,10 @@ struct SkrivarApp: App {
             Divider()
 
             // Shortcuts reference
-            Button("⌥ᴿ  Quick capture") { }.disabled(true)
-            Button("⌥ᴿ⇧  Translate") { }.disabled(true)
-            Button("⌥ᴿ⌘  → Obsidian") { }.disabled(true)
-            Button("⌥ᴿ⌘⇧  → Obsidian+") { }.disabled(true)
+            Button("⌃⌥  Quick capture") { }.disabled(true)
+            Button("⌃⌥⇧  Translate") { }.disabled(true)
+            Button("⌃⌥⌘  → Obsidian") { }.disabled(true)
+            Button("⌃⌥⌘⇧  → Obsidian+") { }.disabled(true)
 
             Divider()
 

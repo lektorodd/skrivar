@@ -53,7 +53,7 @@ final class KeyListener {
         logger.info("Event tap started successfully")
     }
 
-    /// Compute the capture mode from current modifier flags.
+    /// Compute the capture mode from current modifier flags (excluding Control + Option which are the trigger).
     private func computeMode(flags: CGEventFlags) -> CaptureMode {
         let hasShift = flags.contains(.maskShift)
         let hasCommand = flags.contains(.maskCommand)
@@ -65,23 +65,35 @@ final class KeyListener {
         }
     }
 
+    /// Check if the trigger combo (Control + Option) is active.
+    private func isTriggerComboDown(_ flags: CGEventFlags) -> Bool {
+        return flags.contains(.maskControl) && flags.contains(.maskAlternate)
+    }
+
     private func handleEvent(_ event: CGEvent) -> Unmanaged<CGEvent>? {
         let flags = event.flags
         let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
 
-        // Right Option key (keyCode 61) — start/stop recording
-        if keyCode == 61 {
-            if flags.contains(.maskAlternate) && !isKeyDown {
+        // Trigger keys: Right Option (61) or any Control (59=Left, 62=Right)
+        // Recording starts when BOTH Control + Right Option are held together.
+        // This avoids conflicts with Norwegian keyboards where Right Option alone
+        // types special characters: [] {} »« @ $ | \ ~
+        let isTriggerKey = (keyCode == 61 || keyCode == 59 || keyCode == 62)
+
+        if isTriggerKey {
+            if isTriggerComboDown(flags) && !isKeyDown {
+                // Both Control + Option are now held — start recording
                 isKeyDown = true
                 activeMode = computeMode(flags: flags)
-                logger.info("Right Option pressed — mode: \(self.activeMode.rawValue)")
+                logger.info("⌃⌥ pressed — mode: \(self.activeMode.rawValue)")
                 DispatchQueue.main.async { [weak self] in
                     guard let self else { return }
                     self.onRecordStart?(self.activeMode)
                 }
-            } else if !flags.contains(.maskAlternate) && isKeyDown {
+            } else if !isTriggerComboDown(flags) && isKeyDown {
+                // Either Control or Option was released — stop recording
                 isKeyDown = false
-                logger.info("Right Option released — stopping (\(self.activeMode.rawValue))")
+                logger.info("⌃⌥ released — stopping (\(self.activeMode.rawValue))")
                 DispatchQueue.main.async { [weak self] in
                     self?.onRecordStop?()
                 }

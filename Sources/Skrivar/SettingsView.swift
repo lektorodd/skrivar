@@ -15,7 +15,7 @@ struct SettingsView: View {
             StatsTab(appState: appState)
                 .tabItem { Label("Stats", systemImage: "chart.bar") }
         }
-        .frame(width: 480, height: 460)
+        .frame(width: 480, height: 540)
     }
 }
 
@@ -34,6 +34,23 @@ struct GeneralTab: View {
                 }
             }
 
+            Section("Microphone") {
+                Picker("Input device:", selection: $appState.audioInputDeviceUID) {
+                    Text("System Default").tag("")
+                    ForEach(AudioRecorder.availableInputDevices()) { device in
+                        Text(device.name).tag(device.uid)
+                    }
+                }
+
+                if !appState.audioInputDeviceUID.isEmpty {
+                    let deviceName = AudioRecorder.availableInputDevices()
+                        .first(where: { $0.uid == appState.audioInputDeviceUID })?.name ?? "Unknown"
+                    Text("Using: **\(deviceName)**")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             Section("Gemini Polish") {
                 Picker("Polish to:", selection: $appState.geminiTargetLanguage) {
                     ForEach(AppState.geminiLanguages, id: \.code) { lang in
@@ -41,7 +58,7 @@ struct GeneralTab: View {
                     }
                 }
 
-                Text("Used in **Translate** (⌥ᴿ⇧) and **Obsidian+** (⌥ᴿ⌘⇧) modes")
+                Text("Used in **Translate** (⌃⌥⇧) and **Obsidian+** (⌃⌥⌘⇧) modes")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -66,12 +83,16 @@ struct GeneralTab: View {
 
             Section("Shortcuts") {
                 VStack(alignment: .leading, spacing: 6) {
-                    shortcutRow("Right ⌥", "Quick capture → paste")
-                    shortcutRow("Right ⌥ + ⇧", "Translate → paste")
-                    shortcutRow("Right ⌥ + ⌘", "Capture → Obsidian")
-                    shortcutRow("Right ⌥ + ⌘ + ⇧", "Polish → Obsidian")
+                    shortcutRow("⌃ + ⌥", "Quick capture → paste")
+                    shortcutRow("⌃ + ⌥ + ⇧", "Translate → paste")
+                    shortcutRow("⌃ + ⌥ + ⌘", "Capture → Obsidian")
+                    shortcutRow("⌃ + ⌥ + ⌘ + ⇧", "Polish → Obsidian")
                 }
                 .font(.callout)
+
+                Text("Hold **Control + Option** to record, release to transcribe")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)

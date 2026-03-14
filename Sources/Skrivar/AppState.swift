@@ -27,6 +27,11 @@ final class AppState {
         didSet { UserDefaults.standard.set(obsidianFolder, forKey: "obsidianFolder") }
     }
 
+    /// UID of the selected audio input device (empty = system default)
+    var audioInputDeviceUID: String {
+        didSet { UserDefaults.standard.set(audioInputDeviceUID, forKey: "audioInputDeviceUID") }
+    }
+
     // MARK: - Session stats
 
     var sessionTranscriptions = 0
@@ -78,6 +83,7 @@ final class AppState {
         self.geminiTargetLanguage = UserDefaults.standard.string(forKey: "geminiTargetLanguage") ?? "nynorsk"
         self.obsidianVaultName = UserDefaults.standard.string(forKey: "obsidianVaultName") ?? ""
         self.obsidianFolder = UserDefaults.standard.string(forKey: "obsidianFolder") ?? "Inbox"
+        self.audioInputDeviceUID = UserDefaults.standard.string(forKey: "audioInputDeviceUID") ?? ""
         self.totalTranscriptions = UserDefaults.standard.integer(forKey: "totalTranscriptions")
         self.totalCharacters = UserDefaults.standard.integer(forKey: "totalCharacters")
         self.totalGeminiTokens = UserDefaults.standard.integer(forKey: "totalGeminiTokens")
