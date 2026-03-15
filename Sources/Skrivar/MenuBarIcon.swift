@@ -47,12 +47,54 @@ enum MenuBarIcon {
     }
 
     /// Recording icon: animated waveform bars (taller), no cursor.
-    static func recording() -> NSImage {
+    /// `phase` cycles 0→1→2 to animate the bars during recording.
+    static func recording(phase: Int = 0) -> NSImage {
         let size = NSSize(width: 18, height: 18)
         let image = NSImage(size: size, flipped: false) { rect in
             let barWidths: CGFloat = 2.0
             let gap: CGFloat = 2.0
-            let barHeights: [CGFloat] = [8, 14, 10, 16, 6]
+
+            let patterns: [[CGFloat]] = [
+                [8, 14, 10, 16, 6],   // Phase 0
+                [6, 10, 16, 8, 14],   // Phase 1
+                [14, 6, 8, 14, 10],   // Phase 2
+            ]
+
+            let barHeights = patterns[phase % patterns.count]
+            let totalWidth = CGFloat(barHeights.count) * barWidths + CGFloat(barHeights.count - 1) * gap
+            let startX = (rect.width - totalWidth) / 2
+
+            NSColor.black.setFill()
+
+            for (i, h) in barHeights.enumerated() {
+                let x = startX + CGFloat(i) * (barWidths + gap)
+                let y = (rect.height - h) / 2
+                let bar = NSBezierPath(roundedRect: NSRect(x: x, y: y, width: barWidths, height: h), xRadius: 1, yRadius: 1)
+                bar.fill()
+            }
+
+            return true
+        }
+        image.isTemplate = true
+        return image
+    }
+
+    /// Processing icon: waveform bars that cycle through height patterns.
+    /// `phase` cycles 0→1→2 to animate the bars pulsing.
+    static func processing(phase: Int = 0) -> NSImage {
+        let size = NSSize(width: 18, height: 18)
+        let image = NSImage(size: size, flipped: false) { rect in
+            let barWidths: CGFloat = 2.0
+            let gap: CGFloat = 2.0
+
+            // Three height patterns that cycle to create a pulsing wave effect
+            let patterns: [[CGFloat]] = [
+                [4, 10, 6, 12, 4],   // Phase 0: wave right
+                [6, 4, 12, 6, 10],   // Phase 1: wave center
+                [10, 6, 4, 10, 6],   // Phase 2: wave left
+            ]
+
+            let barHeights = patterns[phase % patterns.count]
             let totalWidth = CGFloat(barHeights.count) * barWidths + CGFloat(barHeights.count - 1) * gap
             let startX = (rect.width - totalWidth) / 2
 
@@ -71,3 +113,4 @@ enum MenuBarIcon {
         return image
     }
 }
+

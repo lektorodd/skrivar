@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-03-15
+
+### Added
+- **Animated menu bar icon** — waveform bars now pulse during recording and transcription (idle → recording bars → processing bars → idle)
+- **Error display in overlay** — errors now show in the floating pill overlay with red accent styling, auto-hides after 3 seconds
+
+### Fixed
+- **Clipboard preservation** — clipboard fallback paste now saves and restores ALL pasteboard types (images, files, RTF), not just plain text; previously non-text clipboard contents were silently destroyed
+
 ## [0.4.0] - 2026-03-15
 
 ### Added

@@ -103,7 +103,9 @@ enum TextInserter {
 
     private static func insertViaClipboard(_ text: String) {
         let pasteboard = NSPasteboard.general
-        let oldContents = pasteboard.string(forType: .string)
+
+        // Save ALL pasteboard items (not just string) to preserve images, files, RTF, etc.
+        let savedItems = savePasteboardContents(pasteboard)
 
         pasteboard.clearContents()
         pasteboard.setString(text, forType: .string)
@@ -112,10 +114,33 @@ enum TextInserter {
         simulateCmdV()
         usleep(150_000)
 
-        if let old = oldContents {
-            pasteboard.clearContents()
-            pasteboard.setString(old, forType: .string)
+        // Restore the full clipboard state
+        restorePasteboardContents(pasteboard, items: savedItems)
+    }
+
+    /// Save all pasteboard items and their data for every type.
+    private static func savePasteboardContents(_ pasteboard: NSPasteboard) -> [[(NSPasteboard.PasteboardType, Data)]] {
+        guard let items = pasteboard.pasteboardItems else { return [] }
+        return items.map { item in
+            item.types.compactMap { type in
+                guard let data = item.data(forType: type) else { return nil }
+                return (type, data)
+            }
         }
+    }
+
+    /// Restore previously saved pasteboard items.
+    private static func restorePasteboardContents(_ pasteboard: NSPasteboard, items: [[(NSPasteboard.PasteboardType, Data)]]) {
+        guard !items.isEmpty else { return }
+        pasteboard.clearContents()
+        let pasteboardItems = items.map { typeDataPairs -> NSPasteboardItem in
+            let item = NSPasteboardItem()
+            for (type, data) in typeDataPairs {
+                item.setData(data, forType: type)
+            }
+            return item
+        }
+        pasteboard.writeObjects(pasteboardItems)
     }
 
     private static func simulateCmdV() {

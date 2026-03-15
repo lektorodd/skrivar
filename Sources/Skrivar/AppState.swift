@@ -4,6 +4,8 @@ import SwiftUI
 @Observable
 final class AppState {
     var isRecording = false
+    var isTranscribing = false
+    var processingIconPhase = 0
     var currentMode: CaptureMode = .quick
     /// Mode locked at recording start — used for transcription decisions
     /// (prevents mode loss when user releases Shift before ⌃⌥)
