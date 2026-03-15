@@ -74,14 +74,17 @@ $ICON_ENTRY
 </plist>
 PLIST
 
+# Ad-hoc sign the entire app bundle (required for Apple Silicon)
+echo "Code signing ad-hoc..."
+codesign --force --deep --sign - "$APP_DIR"
+
 echo "✅ Built: $APP_DIR (v$VERSION)"
 
-# Create distributable .zip
+# Create distributable .zip using ditto (preserves macOS attributes better than zip)
 if [ "${CREATE_ZIP:-true}" = "true" ]; then
     ZIP_PATH="$SCRIPT_DIR/dist/Skrivar-v${VERSION}.zip"
-    cd "$SCRIPT_DIR/dist"
-    zip -r -q "$ZIP_PATH" "$APP_NAME.app"
-    cd "$SCRIPT_DIR"
+    echo "Compressing with ditto..."
+    ditto -c -k --keepParent "$APP_DIR" "$ZIP_PATH"
     echo "📦 Zip: $ZIP_PATH"
 fi
 

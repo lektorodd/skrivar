@@ -33,7 +33,14 @@ jobs:
 
             Download `Skrivar-v${{ steps.version.outputs.VERSION }}.zip`, unzip, and drag to Applications.
 
-            **First launch:** Right-click → Open → "Open Anyway" (app is not code-signed yet).
+            **First launch:**
+            Because Skrivar is open-source and not notarized by Apple, macOS might say the app is "damaged" due to Gatekeeper quarantine.
+
+            To fix this, open Terminal and run:
+            ```bash
+            xattr -cr /Applications/Skrivar.app
+            ```
+            Then right-click the app and choose **Open**.
 
             See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
           files: dist/Skrivar-v${{ steps.version.outputs.VERSION }}.zip

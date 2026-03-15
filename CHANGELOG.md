@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **Post-onboarding crash** — `EXC_BAD_ACCESS` when closing onboarding window; now hidden via `orderOut` instead of `close` to avoid NSHostingView + @Observable deallocation crash
 - **Onboarding not showing** — was trying to open via URL scheme from `init()` where `openWindow` isn't available
+- **App is damaged error** — added ad-hoc code signing and `ditto` zipping to `build_app.sh` to prevent Gatekeeper from entirely blocking the downloaded ZIP
 - **Duplicate app instances** — killed old process before launching new build
 
 ## [0.3.0] - 2026-03-14
