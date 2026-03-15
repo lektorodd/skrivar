@@ -218,29 +218,7 @@ struct SkrivarApp: App {
 
             Divider()
 
-            // Info section
-            Button("Language: \(appState.languageDisplayName)") { }
-                .disabled(true)
-
-            Button(appState.apiKeySet ? "API Key: ✓" : "⚠️ API Key: Not Set") { }
-                .disabled(true)
-
-            if appState.obsidianConfigured {
-                Button("Obsidian: \(appState.obsidianVaultName)/\(appState.obsidianFolder)") { }
-                    .disabled(true)
-            }
-
-            Divider()
-
-            // Shortcuts reference
-            Button("⌃⌥  Quick capture") { }.disabled(true)
-            Button("⌃⌥⇧  Translate") { }.disabled(true)
-            Button("⌃⌥⌘  Raw Dictation") { }.disabled(true)
-            Button("⌃⌥⌘⇧  Flash (synthesize)") { }.disabled(true)
-
-            Divider()
-
-            // Raw session status
+            // Active raw session
             if appState.isRawSession {
                 Button("◉ Raw session · \(appState.rawSessionChunkCount) chunks") { }
                     .disabled(true)
@@ -248,14 +226,17 @@ struct SkrivarApp: App {
                     _ = appState.endRawSession()
                     appState.statusMessage = "Raw session ended"
                 }
+                Divider()
             }
 
-            // Session stats
-            Button("📊 Session: \(appState.sessionTranscriptions) transcriptions") { }
-                .disabled(true)
+            // Session stats (only show if there's activity)
+            if appState.sessionTranscriptions > 0 {
+                Button("📊 \(appState.sessionTranscriptions) transcriptions") { }
+                    .disabled(true)
+            }
 
             if appState.sessionGeminiTokens > 0 {
-                Button("🔤 Gemini tokens: \(appState.sessionGeminiTokens)") { }
+                Button("🔤 \(appState.sessionGeminiTokens) Gemini tokens") { }
                     .disabled(true)
             }
 
@@ -378,7 +359,12 @@ struct SkrivarApp: App {
                     }
                     return
                 }
-                // Step 1: Transcribe with ElevenLabs (with 1 retry on failure)
+                // Step 1: Compress audio if needed (>30s recordings → AAC)
+                let compressed = appState.compressionEnabled
+                    ? AudioCompressor.compressIfNeeded(wavData: wavData)
+                    : AudioCompressor.CompressedAudio(data: wavData, filename: "recording.wav", mimeType: "audio/wav")
+
+                // Step 1b: Transcribe with ElevenLabs (with 1 retry on failure)
                 var text = ""
                 var lastError: Error?
 
@@ -386,9 +372,11 @@ struct SkrivarApp: App {
                     guard !Task.isCancelled else { return }
                     do {
                         text = try await Transcriber.transcribe(
-                            wavData: wavData,
+                            audioData: compressed.data,
                             apiKey: apiKey,
-                            languageCode: appState.languageCode
+                            languageCode: appState.languageCode,
+                            filename: compressed.filename,
+                            mimeType: compressed.mimeType
                         )
                         lastError = nil
                         break

@@ -20,6 +20,9 @@ final class AppState {
         : UserDefaults.standard.double(forKey: "vadSilenceSeconds") {
         didSet { UserDefaults.standard.set(vadSilenceSeconds, forKey: "vadSilenceSeconds") }
     }
+    var compressionEnabled: Bool = UserDefaults.standard.object(forKey: "compressionEnabled") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(compressionEnabled, forKey: "compressionEnabled") }
+    }
     var pendingRecordTask: DispatchWorkItem?
     var cancellableTranscriptionTask: Task<Void, Never>?
     var statusMessage = "Ready"

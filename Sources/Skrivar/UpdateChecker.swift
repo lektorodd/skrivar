@@ -34,6 +34,12 @@ enum UpdateChecker {
             let remoteVersion = tagName.hasPrefix("v") ? String(tagName.dropFirst()) : tagName
             let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"
 
+            // Dev builds (version 0.0.0) are always ahead of releases — skip check
+            guard currentVersion != "0.0.0" else {
+                logger.debug("Dev build detected, skipping update check")
+                return
+            }
+
             logger.info("Current: \(currentVersion), Latest: \(remoteVersion)")
 
             if isNewer(remote: remoteVersion, current: currentVersion) {

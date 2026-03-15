@@ -11,6 +11,9 @@ struct SettingsView: View {
             GeneralTab(appState: appState)
                 .tabItem { Label("General", systemImage: "gear") }
 
+            AudioTab(appState: appState)
+                .tabItem { Label("Audio", systemImage: "waveform") }
+
             APIKeysTab(appState: appState)
                 .tabItem { Label("API Keys", systemImage: "key") }
 
@@ -20,7 +23,7 @@ struct SettingsView: View {
             StatsTab(appState: appState)
                 .tabItem { Label("Stats", systemImage: "chart.bar") }
         }
-        .frame(width: 520, height: 540)
+        .frame(width: 520, height: 560)
     }
 }
 
@@ -28,14 +31,9 @@ struct SettingsView: View {
 
 struct GeneralTab: View {
     @Bindable var appState: AppState
-    @State private var soundsEnabled = SoundManager.isEnabled
     @State private var accessibilityGranted = AXIsProcessTrusted()
     @State private var microphoneGranted = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
     @State private var permissionTimer: Timer?
-    @State private var triggerKeyCode: Int = {
-        let saved = UserDefaults.standard.integer(forKey: "triggerKeyCode")
-        return saved > 0 ? saved : 27
-    }()
 
     var body: some View {
         Form {
@@ -47,23 +45,6 @@ struct GeneralTab: View {
                 }
             }
 
-            Section("Microphone") {
-                Picker("Input device:", selection: $appState.audioInputDeviceUID) {
-                    Text("System Default").tag("")
-                    ForEach(AudioRecorder.availableInputDevices()) { device in
-                        Text(device.name).tag(device.uid)
-                    }
-                }
-
-                if !appState.audioInputDeviceUID.isEmpty {
-                    let deviceName = AudioRecorder.availableInputDevices()
-                        .first(where: { $0.uid == appState.audioInputDeviceUID })?.name ?? "Unknown"
-                    Text("Using: **\(deviceName)**")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
             Section("Gemini Polish") {
                 Picker("Polish to:", selection: $appState.geminiTargetLanguage) {
                     ForEach(AppState.geminiLanguages, id: \.code) { lang in
@@ -71,9 +52,9 @@ struct GeneralTab: View {
                     }
                 }
 
-                Text("Used in **Translate** (⌃⌥⇧) and **Flash** (⌃⌥⌘⇧) modes")
+                Text("Used in Translate (⌃⌥⇧) and Flash (⌃⌥⌘⇧) modes")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary.opacity(0.6))
             }
 
             Section("Obsidian") {
@@ -84,13 +65,13 @@ struct GeneralTab: View {
                     .textFieldStyle(.roundedBorder)
 
                 if appState.obsidianConfigured {
-                    Text("✓ Notes will go to **\(appState.obsidianVaultName)/\(appState.obsidianFolder)/**")
+                    Text("✓ Notes will go to \(appState.obsidianVaultName)/\(appState.obsidianFolder)/")
                         .font(.caption)
                         .foregroundStyle(.green)
                 } else {
                     Text("Set your vault name to enable Obsidian capture")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.primary.opacity(0.6))
                 }
             }
 
@@ -103,20 +84,9 @@ struct GeneralTab: View {
                 }
                 .font(.callout)
 
-                Text("Hold **Control + Option** to record, release to transcribe")
+                Text("Hold Control + Option to record, release to transcribe")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Section("Sound Effects") {
-                Toggle("Play sounds", isOn: $soundsEnabled)
-                    .onChange(of: soundsEnabled) { _, newValue in
-                        SoundManager.isEnabled = newValue
-                    }
-
-                Text("Audio feedback for recording start, stop, and transcription results")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary.opacity(0.6))
             }
 
             Section("Permissions") {
@@ -171,7 +141,6 @@ struct GeneralTab: View {
                     set: { show in
                         UserDefaults.standard.set(show, forKey: "showDockIcon")
                         NSApp.setActivationPolicy(show ? .regular : .accessory)
-                        // Re-show windows after policy change (accessory hides them)
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                             NSApp.activate(ignoringOtherApps: true)
                             for window in NSApp.windows where window.title.contains("Settings") {
@@ -183,29 +152,7 @@ struct GeneralTab: View {
 
                 Text("Dock icon is optional — Skrivar always lives in the menu bar")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Section("Recording") {
-                Toggle("Auto-stop on silence", isOn: Binding(
-                    get: { appState.vadEnabled },
-                    set: { appState.vadEnabled = $0 }
-                ))
-
-                if appState.vadEnabled {
-                    Stepper(
-                        "Silence duration: \(Int(appState.vadSilenceSeconds))s",
-                        value: Binding(
-                            get: { appState.vadSilenceSeconds },
-                            set: { appState.vadSilenceSeconds = $0 }
-                        ),
-                        in: 1...10,
-                        step: 1
-                    )
-                    Text("Automatically stop recording after \(Int(appState.vadSilenceSeconds)) seconds of silence")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                    .foregroundStyle(.primary.opacity(0.6))
             }
         }
         .formStyle(.grouped)
@@ -230,8 +177,78 @@ struct GeneralTab: View {
                 .fontWeight(.medium)
                 .frame(width: 160, alignment: .leading)
             Text(description)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.primary.opacity(0.6))
         }
+    }
+}
+
+// MARK: - Audio Tab
+
+struct AudioTab: View {
+    @Bindable var appState: AppState
+    @State private var soundsEnabled = SoundManager.isEnabled
+
+    var body: some View {
+        Form {
+            Section("Microphone") {
+                Picker("Input device:", selection: $appState.audioInputDeviceUID) {
+                    Text("System Default").tag("")
+                    ForEach(AudioRecorder.availableInputDevices()) { device in
+                        Text(device.name).tag(device.uid)
+                    }
+                }
+
+                if !appState.audioInputDeviceUID.isEmpty {
+                    let deviceName = AudioRecorder.availableInputDevices()
+                        .first(where: { $0.uid == appState.audioInputDeviceUID })?.name ?? "Unknown"
+                    Text("Using: \(deviceName)")
+                        .font(.caption)
+                        .foregroundStyle(.primary.opacity(0.6))
+                }
+            }
+
+            Section("Recording") {
+                Toggle("Auto-stop on silence", isOn: Binding(
+                    get: { appState.vadEnabled },
+                    set: { appState.vadEnabled = $0 }
+                ))
+
+                if appState.vadEnabled {
+                    Stepper(
+                        "Silence duration: \(Int(appState.vadSilenceSeconds))s",
+                        value: Binding(
+                            get: { appState.vadSilenceSeconds },
+                            set: { appState.vadSilenceSeconds = $0 }
+                        ),
+                        in: 1...10,
+                        step: 1
+                    )
+                    Text("Automatically stop recording after \(Int(appState.vadSilenceSeconds)) seconds of silence")
+                        .font(.caption)
+                        .foregroundStyle(.primary.opacity(0.6))
+                }
+
+                Toggle("Compress long recordings", isOn: Binding(
+                    get: { appState.compressionEnabled },
+                    set: { appState.compressionEnabled = $0 }
+                ))
+                Text("Compress recordings over 30s to AAC before upload — saves bandwidth on slow connections")
+                    .font(.caption)
+                    .foregroundStyle(.primary.opacity(0.6))
+            }
+
+            Section("Sound Effects") {
+                Toggle("Play sounds", isOn: $soundsEnabled)
+                    .onChange(of: soundsEnabled) { _, newValue in
+                        SoundManager.isEnabled = newValue
+                    }
+
+                Text("Audio feedback for recording start, stop, and transcription results")
+                    .font(.caption)
+                    .foregroundStyle(.primary.opacity(0.6))
+            }
+        }
+        .formStyle(.grouped)
     }
 }
 

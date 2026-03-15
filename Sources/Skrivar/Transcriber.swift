@@ -10,11 +10,13 @@ enum Transcriber {
         apiKey.contains("residency_eu") ? euEndpoint : globalEndpoint
     }
 
-    /// Transcribe WAV audio data to text.
+    /// Transcribe audio data to text.
     static func transcribe(
-        wavData: Data,
+        audioData: Data,
         apiKey: String,
-        languageCode: String = ""
+        languageCode: String = "",
+        filename: String = "recording.wav",
+        mimeType: String = "audio/wav"
     ) async throws -> String {
         let boundary = UUID().uuidString
         let url = endpoint(for: apiKey)
@@ -33,8 +35,8 @@ enum Transcriber {
 
         // File field
         body.appendMultipart(boundary: boundary, name: "file",
-                             filename: "recording.wav",
-                             contentType: "audio/wav", data: wavData)
+                             filename: filename,
+                             contentType: mimeType, data: audioData)
 
         // model_id field
         body.appendMultipart(boundary: boundary, name: "model_id", value: "scribe_v2")

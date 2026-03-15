@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.4.3] - 2026-03-15
+
+### Added
+- **Conditional audio compression** — recordings longer than 30s are automatically compressed from WAV to AAC (64kbps) before upload, reducing upload size ~10x
+- **Settings: compression toggle** — enable/disable compression in Settings → Audio
+
+### Changed
+- **Settings reorganized** — split overloaded General tab into General (language, Obsidian, shortcuts, permissions, system) and Audio (microphone, recording, sound effects) tabs
+- **Settings captions** — improved readability of help text throughout
+- **Menu bar dropdown** — stripped to essentials (status, settings, quit); removed redundant config info and shortcut reference
+- **Update checker** — dev builds no longer show false "Update available" banner
+
 ## [0.4.2] - 2026-03-15
 
 ### Added
