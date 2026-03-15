@@ -22,17 +22,17 @@ Hold **⌃⌥** (Control + Option), speak into your mic, and release — transcr
 
 | Shortcut | Mode | What happens |
 |----------|------|-------------|
-| `⌃⌥` | Quick | Transcribe → paste |
-| `⌃⌥⇧` | Translate | Transcribe → Gemini (Nynorsk/polish) → paste |
-| `⌃⌥⌘` | Obsidian | Transcribe → new Obsidian note |
-| `⌃⌥⌘⇧` | Obsidian+ | Transcribe → Gemini polish → Obsidian note |
+| `⌃⌥` | Quick | Transcribe → paste at cursor |
+| `⌃⌥⇧` | Translate | Transcribe → Gemini polish/translate → paste |
+| `⌃⌥⌘` | Raw Dictation | Start a session → each recording appends to one Obsidian note |
+| `⌃⌥⌘⇧` | Flash | Synthesize all raw chunks with Gemini → append to Obsidian note |
 
 ## Features
 
 - **Push-to-talk** — hold to record, release to transcribe. No buttons to click.
 - **ElevenLabs Scribe v2** — high-quality multilingual speech-to-text.
 - **Gemini Flash polishing** — optional AI post-processing for cleaner output, with dedicated Nynorsk translation support.
-- **Obsidian integration** — send transcriptions directly as new notes via URI scheme.
+- **Obsidian integration** — Raw Dictation sessions that append multiple voice captures to a single note, with Flash synthesis to summarize via Gemini.
 - **Live waveform overlay** — Dynamic Island-style floating pill with real-time audio levels.
 - **Custom app & menu bar icon** — waveform+cursor design, monochrome template for menu bar.
 - **Transcription history** — browse and copy your last 50 transcriptions.
