@@ -35,6 +35,33 @@ final class AppState {
         didSet { UserDefaults.standard.set(audioInputDeviceUID, forKey: "audioInputDeviceUID") }
     }
 
+    // MARK: - Raw Dictation Session
+
+    var isRawSession = false
+    var rawSessionNoteFile = ""
+    var rawSessionChunks: [String] = []
+
+    var rawSessionChunkCount: Int { rawSessionChunks.count }
+
+    func startRawSession(noteFile: String) {
+        isRawSession = true
+        rawSessionNoteFile = noteFile
+        rawSessionChunks = []
+    }
+
+    func appendRawChunk(_ text: String) {
+        rawSessionChunks.append(text)
+    }
+
+    /// End raw session and return all accumulated chunks.
+    func endRawSession() -> [String] {
+        let chunks = rawSessionChunks
+        isRawSession = false
+        rawSessionNoteFile = ""
+        rawSessionChunks = []
+        return chunks
+    }
+
     // MARK: - Session stats
 
     var sessionTranscriptions = 0
@@ -77,6 +104,12 @@ final class AppState {
         ("Deutsch", "deutsch"),
         ("Same as input", "same"),
     ]
+
+    // MARK: - Update checker
+
+    var updateAvailable = false
+    var latestVersion = ""
+    var updateURL = ""
 
     init() {
         var saved = UserDefaults.standard.string(forKey: "languageCode") ?? "nor"

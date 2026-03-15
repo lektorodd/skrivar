@@ -32,9 +32,11 @@ venv/
 .env
 *.log
 
-# === IDE ===
+# === IDE & AI Agent Tools ===
 .vscode/
 .idea/
+.agents/
+.agent/
 *.swp
 *.swo
 *~

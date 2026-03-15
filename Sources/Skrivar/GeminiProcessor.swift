@@ -112,6 +112,103 @@ enum GeminiProcessor {
         Tekst: \(text)
         """
     }
+
+    // MARK: - Long-form synthesis (Raw Dictation "Flash")
+
+    /// Synthesize multiple raw dictation chunks into coherent, well-structured text.
+    static func synthesize(
+        chunks: [String],
+        apiKey: String,
+        targetLanguage: String
+    ) async throws -> (text: String, usage: GeminiUsage) {
+        guard !chunks.isEmpty else {
+            return ("", GeminiUsage(promptTokens: 0, candidateTokens: 0, totalTokens: 0))
+        }
+
+        let prompt = buildSynthesisPrompt(chunks: chunks, targetLanguage: targetLanguage)
+
+        let requestBody: [String: Any] = [
+            "contents": [
+                ["parts": [["text": prompt]]]
+            ],
+            "generationConfig": [
+                "temperature": 0.3,
+                "maxOutputTokens": 8192,
+            ]
+        ]
+
+        let url = "\(endpoint)?key=\(apiKey)"
+        var request = URLRequest(url: URL(string: url)!)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        request.timeoutInterval = 120  // Longer timeout for big synthesis
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw GeminiError.invalidResponse
+        }
+        guard httpResponse.statusCode == 200 else {
+            let errorBody = String(data: data, encoding: .utf8) ?? "Unknown"
+            logger.error("Gemini synthesis error \(httpResponse.statusCode): \(errorBody)")
+            throw GeminiError.apiError(statusCode: httpResponse.statusCode, message: errorBody)
+        }
+
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let candidates = json["candidates"] as? [[String: Any]],
+              let content = candidates.first?["content"] as? [String: Any],
+              let parts = content["parts"] as? [[String: Any]],
+              let resultText = parts.first?["text"] as? String
+        else {
+            throw GeminiError.parseError
+        }
+
+        var usage = GeminiUsage(promptTokens: 0, candidateTokens: 0, totalTokens: 0)
+        if let usageMeta = json["usageMetadata"] as? [String: Any] {
+            usage = GeminiUsage(
+                promptTokens: usageMeta["promptTokenCount"] as? Int ?? 0,
+                candidateTokens: usageMeta["candidatesTokenCount"] as? Int ?? 0,
+                totalTokens: usageMeta["totalTokenCount"] as? Int ?? 0
+            )
+        }
+
+        let cleaned = resultText.trimmingCharacters(in: .whitespacesAndNewlines)
+        logger.info("Gemini synthesis: \(chunks.count) chunks → \(cleaned.count) chars, \(usage.totalTokens) tokens")
+        return (cleaned, usage)
+    }
+
+    private static func buildSynthesisPrompt(chunks: [String], targetLanguage: String) -> String {
+        let numberedChunks = chunks.enumerated()
+            .map { "[\($0.offset + 1)] \($0.element)" }
+            .joined(separator: "\n\n")
+
+        let languageDirective: String
+        if targetLanguage == "same" {
+            languageDirective = "Skriv på same språk som talar brukar."
+        } else if targetLanguage == "nynorsk" {
+            languageDirective = "Skriv på korrekt nynorsk. Bruk nynorske ordformer og grammatikk gjennomgåande."
+        } else {
+            languageDirective = "Skriv på korrekt \(targetLanguage)."
+        }
+
+        return """
+        Du er ein skriveassistent. Teksten under er ei rekkje med rå taleopptak frå ei \
+        idémyldring- eller tenkjeøkt. Talaren tenkjer høgt — rekn med ufullstendige \
+        setningar, rettingar, gjentakingar og lause tankar.
+
+        Oppgåva di:
+        1. Syntetiser dette til samanhengande, velstrukturert tekst som fangar ALLE ideane.
+        2. Organiser logisk med avsnitt. Bruk overskrifter om det er naturleg.
+        3. Fjern gjentakingar og fyllord, men ikkje mist nokon idé.
+        4. \(languageDirective)
+        5. Gje BERRE den syntetiserte teksten, utan forklaring eller kommentarar.
+
+        Rå opptak:
+
+        \(numberedChunks)
+        """
+    }
 }
 
 enum GeminiError: LocalizedError {

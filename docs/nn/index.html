@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="nn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Skrivar — Diktering som faktisk skriv nynorsk</title>
+  <meta name="description" content="Skrivar er ein macOS-app som gjer tale til tekst — og omset automatisk til korrekt nynorsk. Hald ein tast, snakk, slepp. Ferdig.">
+  <meta name="keywords" content="nynorsk, diktering, tale til tekst, bokmål til nynorsk, macOS, speech to text, oversetting">
+  <link rel="stylesheet" href="../style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✦</text></svg>">
+</head>
+<body>
+
+  <!-- ═══════════════ LANGUAGE SWITCHER ═══════════════ -->
+  <nav class="lang-nav">
+    <a href="../" class="lang-link">English</a>
+    <span class="lang-link active">Nynorsk</span>
+  </nav>
+
+
+  <!-- ═══════════════ HERO ═══════════════ -->
+  <section class="hero" id="hero">
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="badge-dot"></span>
+        macOS Menyline-app
+      </div>
+
+      <h1>
+        <span class="text-gradient">Skrivar</span>
+      </h1>
+
+      <p class="hero-tagline">
+        Endeleg — diktering som faktisk skriv nynorsk.<br>
+        Hald ein tast, snakk, slepp. Teksten din kjem i korrekt nynorsk.
+      </p>
+
+      <!-- Animated waveform -->
+      <div class="hero-waveform" aria-hidden="true">
+        <div class="bar" style="--bar-h: 16px; animation-delay: 0.0s"></div>
+        <div class="bar" style="--bar-h: 28px; animation-delay: 0.1s"></div>
+        <div class="bar" style="--bar-h: 40px; animation-delay: 0.2s"></div>
+        <div class="bar" style="--bar-h: 20px; animation-delay: 0.3s"></div>
+        <div class="bar" style="--bar-h: 36px; animation-delay: 0.15s"></div>
+        <div class="bar" style="--bar-h: 48px; animation-delay: 0.25s"></div>
+        <div class="bar" style="--bar-h: 24px; animation-delay: 0.35s"></div>
+        <div class="bar" style="--bar-h: 44px; animation-delay: 0.05s"></div>
+        <div class="bar" style="--bar-h: 32px; animation-delay: 0.2s"></div>
+        <div class="bar" style="--bar-h: 18px; animation-delay: 0.3s"></div>
+        <div class="bar" style="--bar-h: 38px; animation-delay: 0.1s"></div>
+        <div class="bar" style="--bar-h: 26px; animation-delay: 0.25s"></div>
+        <div class="bar" style="--bar-h: 42px; animation-delay: 0.15s"></div>
+        <div class="bar" style="--bar-h: 20px; animation-delay: 0.35s"></div>
+        <div class="bar" style="--bar-h: 34px; animation-delay: 0.05s"></div>
+        <div class="bar" style="--bar-h: 14px; animation-delay: 0.2s"></div>
+        <div class="bar" style="--bar-h: 28px; animation-delay: 0.3s"></div>
+        <div class="bar" style="--bar-h: 46px; animation-delay: 0.1s"></div>
+        <div class="bar" style="--bar-h: 22px; animation-delay: 0.25s"></div>
+        <div class="bar" style="--bar-h: 36px; animation-delay: 0.15s"></div>
+      </div>
+
+      <!-- CTA -->
+      <a href="https://github.com/lektorodd/skrivar/releases/latest" class="cta-button">
+        Last ned Skrivar — Gratis
+        <span class="cta-sub">Fri & open source · macOS 14+</span>
+      </a>
+      <p style="margin-top: var(--space-sm); font-size: 0.75rem; color: var(--text-muted); animation: fadeInUp 0.8s 0.85s ease-out both;">
+        Krev ein <a href="https://elevenlabs.io">ElevenLabs</a>-nøkkel (gratis nivå) og eventuelt <a href="https://aistudio.google.com/apikey">Gemini</a>-nøkkel.
+      </p>
+    </div>
+
+    <div class="scroll-indicator">
+      <span>Scroll</span>
+      <div class="scroll-line"></div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════ THE PROBLEM ═══════════════ -->
+  <section id="problemet">
+    <div class="container">
+      <div class="reveal" style="text-align: center;">
+        <span class="section-label" style="justify-content: center;">Problemet</span>
+        <h2 class="section-title" style="text-align: center; margin: 0 auto var(--space-xs);">Alle dikteringsverktøy gir deg bokmål</h2>
+        <p class="section-subtitle" style="text-align: center; margin: 0 auto;">
+          Det finst ingen talegjenkjenning som skil mellom nynorsk og bokmål.
+          Apple Dictation, ElevenLabs, Whisper — alle gir deg bokmål, same kva du seier.
+        </p>
+      </div>
+
+      <div class="problem-demo reveal">
+        <div class="problem-flow">
+          <div class="problem-step">
+            <div class="problem-icon">🎤</div>
+            <div class="problem-label">Du seier</div>
+            <div class="problem-text problem-nn">"Eg har ikkje fått tak i dokumentet enno"</div>
+          </div>
+
+          <div class="problem-arrow">→</div>
+
+          <div class="problem-step">
+            <div class="problem-icon">🤖</div>
+            <div class="problem-label">Alle STT-verktøy skriv</div>
+            <div class="problem-text problem-bm">"Jeg har ikke fått tak i dokumentet ennå"</div>
+          </div>
+
+          <div class="problem-arrow">→</div>
+
+          <div class="problem-step">
+            <div class="problem-icon">✦</div>
+            <div class="problem-label">Skrivar skriv</div>
+            <div class="problem-text problem-ok">"Eg har ikkje fått tak i dokumentet enno"</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════ HOW IT WORKS ═══════════════ -->
+  <section id="slik-funkar-det">
+    <div class="container">
+      <div class="reveal" style="text-align: center;">
+        <span class="section-label" style="justify-content: center;">Slik funkar det</span>
+        <h2 class="section-title" style="margin: 0 auto;">Tre sekund til nynorsk tekst</h2>
+      </div>
+
+      <div class="steps-row reveal stagger">
+        <div class="step">
+          <div class="step-visual">🎹</div>
+          <div class="step-number">1</div>
+          <h3>Hald tasten</h3>
+          <p>Trykk og hald ⌃⌥ (Control + Option). Opptak startar med ein gong.</p>
+        </div>
+
+        <div class="step">
+          <div class="step-visual">🎙</div>
+          <div class="step-number">2</div>
+          <h3>Snakk som vanleg</h3>
+          <p>Snakk bokmål, nynorsk, eller ei blanding. ElevenLabs transkriberer talen din.</p>
+        </div>
+
+        <div class="step">
+          <div class="step-visual">✦</div>
+          <div class="step-number">3</div>
+          <h3>Slepp — ferdig</h3>
+          <p>Gemini AI omset automatisk til korrekt nynorsk og limer inn der markøren din er.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════ OVERLAY DEMO ═══════════════ -->
+  <section id="overlay-demo">
+    <div class="container">
+      <div class="reveal" style="text-align: center;">
+        <span class="section-label" style="justify-content: center;">Tilbakemelding</span>
+        <h2 class="section-title" style="text-align: center; margin: 0 auto var(--space-xs);">Ei flytande boble fylgjer deg</h2>
+        <p class="section-subtitle" style="text-align: center; margin: 0 auto;">
+          Ein glassmorfisme-overlay viser opptaksstatus med fargar som viser kva modus du er i.
+        </p>
+      </div>
+
+      <div class="overlay-demo reveal">
+        <div class="overlay-pill">
+          <div class="dots">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <span class="pill-label">✦ Lyttar…</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════ CAPTURE MODES ═══════════════ -->
+  <section id="moduser">
+    <div class="container">
+      <div class="reveal">
+        <span class="section-label">Moduser</span>
+        <h2 class="section-title">Fire måtar å fange<br>stemma di</h2>
+        <p class="section-subtitle">
+          Same tastetrykk, ulike modifikatorar. Byt modus sjølv midt i opptaket.
+        </p>
+      </div>
+
+      <div class="modes-grid stagger reveal">
+
+        <div class="mode-card" data-mode="quick">
+          <div class="mode-icon">⚡</div>
+          <h3>Hurtigfangst</h3>
+          <p>Transkriber og lim inn direkte der markøren er. Raskaste vegen frå tale til tekst.</p>
+          <span class="mode-shortcut">⌃⌥</span>
+        </div>
+
+        <div class="mode-card" data-mode="translate">
+          <div class="mode-icon">✦</div>
+          <h3>Nynorsk-modus</h3>
+          <p>Transkriber, omset til korrekt nynorsk med Gemini AI, og lim inn. <strong>Den viktigaste modusen.</strong></p>
+          <span class="mode-shortcut">⌃⌥ + ⇧</span>
+        </div>
+
+        <div class="mode-card" data-mode="obsidian">
+          <div class="mode-icon">⬡</div>
+          <h3>Obsidian</h3>
+          <p>Talefangst rett til Obsidian-vaulten din som eit nytt notat. Handsfree kunnskapsfangst.</p>
+          <span class="mode-shortcut">⌃⌥ + ⌘</span>
+        </div>
+
+        <div class="mode-card" data-mode="polish">
+          <div class="mode-icon">⬡✦</div>
+          <h3>Obsidian+</h3>
+          <p>Poler med Gemini først, deretter lag eit Obsidian-notat. AI-raffinerte idear, lagra med ein gong.</p>
+          <span class="mode-shortcut">⌃⌥ + ⌘ + ⇧</span>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════ FEATURES ═══════════════ -->
+  <section id="funksjonar">
+    <div class="container">
+      <div class="reveal">
+        <span class="section-label">Funksjonar</span>
+        <h2 class="section-title">Bygd for kvardagen din</h2>
+        <p class="section-subtitle">
+          Alt designa for å halda seg ute av vegen — men alltid tilgjengeleg.
+        </p>
+      </div>
+
+      <div class="features-grid stagger reveal">
+
+        <div class="feature-card">
+          <span class="feature-icon">🔊</span>
+          <h3>ElevenLabs Scribe v2</h3>
+          <p>Bransjeleiande talegjenkjenning med automatisk språkdeteksjon og EU-datalagring.</p>
+        </div>
+
+        <div class="feature-card">
+          <span class="feature-icon">🧠</span>
+          <h3>Nynorsk-ekspert AI</h3>
+          <p>Gemini 2.5 Flash med spesialtilpassa nynorsk-prompt — korrekt grammatikk, ordformer og verbbøying.</p>
+        </div>
+
+        <div class="feature-card">
+          <span class="feature-icon">📓</span>
+          <h3>Obsidian-integrasjon</h3>
+          <p>Send transkripsjoner direkte til Obsidian-vaulten din som tidsstempla notat via URI-skjema.</p>
+        </div>
+
+        <div class="feature-card">
+          <span class="feature-icon">🎵</span>
+          <h3>Levande bølgjeform</h3>
+          <p>Dynamic Island-inspirert flytande boble med sanntids lydnivå og opptakstidtakar.</p>
+        </div>
+
+        <div class="feature-card">
+          <span class="feature-icon">📋</span>
+          <h3>Transkripsjonshistorikk</h3>
+          <p>Bla gjennom og kopier dei siste 50 transkripsjonane dine. Aldri mist ein tekst.</p>
+        </div>
+
+        <div class="feature-card">
+          <span class="feature-icon">🔑</span>
+          <h3>Trygg lagring</h3>
+          <p>API-nøklar lagra i macOS-nøkkelring. Ingen data vert sendt til oss — berre dine API-ar.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════ KEYBOARD SHORTCUTS ═══════════════ -->
+  <section id="tastereferanse">
+    <div class="container">
+      <div class="reveal">
+        <span class="section-label">Tastetrykk</span>
+        <h2 class="section-title">Ein tast, fire moduser</h2>
+        <p class="section-subtitle">
+          Alle moduser brukar Control + Option som anker — legg til modifikatorar for å endre oppførselen.
+        </p>
+      </div>
+
+      <div class="shortcuts-panel reveal">
+        <div class="shortcut-rows stagger reveal">
+
+          <div class="shortcut-row">
+            <div class="shortcut-keys">
+              <kbd>⌃</kbd>
+              <kbd>⌥</kbd>
+            </div>
+            <span class="shortcut-desc">Hurtigfangst → lim inn ved markør</span>
+            <span class="shortcut-badge" data-type="paste">Lim inn</span>
+          </div>
+
+          <div class="shortcut-row">
+            <div class="shortcut-keys">
+              <kbd>⌃</kbd>
+              <kbd>⌥</kbd>
+              <kbd>⇧</kbd>
+            </div>
+            <span class="shortcut-desc">Nynorsk-omsetjing → lim inn ved markør</span>
+            <span class="shortcut-badge" data-type="ai">Nynorsk</span>
+          </div>
+
+          <div class="shortcut-row">
+            <div class="shortcut-keys">
+              <kbd>⌃</kbd>
+              <kbd>⌥</kbd>
+              <kbd>⌘</kbd>
+            </div>
+            <span class="shortcut-desc">Fangst → nytt Obsidian-notat</span>
+            <span class="shortcut-badge" data-type="obsidian">Obsidian</span>
+          </div>
+
+          <div class="shortcut-row">
+            <div class="shortcut-keys">
+              <kbd>⌃</kbd>
+              <kbd>⌥</kbd>
+              <kbd>⌘</kbd>
+              <kbd>⇧</kbd>
+            </div>
+            <span class="shortcut-desc">Poler med Gemini → Obsidian-notat</span>
+            <span class="shortcut-badge" data-type="both">AI + Obsidian</span>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════ WHO IS IT FOR ═══════════════ -->
+  <section id="for-kven">
+    <div class="container">
+      <div class="reveal" style="text-align: center;">
+        <span class="section-label" style="justify-content: center;">For kven?</span>
+        <h2 class="section-title" style="text-align: center; margin: 0 auto var(--space-xs);">Alle som skriv nynorsk</h2>
+      </div>
+
+      <div class="audience-grid stagger reveal">
+        <div class="audience-card">
+          <span class="audience-icon">🏫</span>
+          <h3>Lærarar</h3>
+          <p>Dikter tilbakemeldingar, planar og oppgåver rett i nynorsk utan å korrekturlese alt.</p>
+        </div>
+        <div class="audience-card">
+          <span class="audience-icon">📰</span>
+          <h3>Journalistar</h3>
+          <p>Snakk inn utkast og intervjunotat — dei kjem ut i korrekt nynorsk, klare til redigering.</p>
+        </div>
+        <div class="audience-card">
+          <span class="audience-icon">🏛️</span>
+          <h3>Offentleg sektor</h3>
+          <p>Kommunar og fylke med nynorsk som tenestemål. Spar tid på kvart einaste dokument.</p>
+        </div>
+        <div class="audience-card">
+          <span class="audience-icon">✍️</span>
+          <h3>Forfattarar & studentar</h3>
+          <p>Skriv oppgåver, blogginnlegg og kreativ tekst raskare enn nokon gong — direkte i nynorsk.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════ DOWNLOAD ═══════════════ -->
+  <section id="last-ned">
+    <div class="container" style="text-align: center;">
+      <div class="reveal">
+        <span class="section-label" style="justify-content: center;">Last ned</span>
+        <h2 class="section-title" style="text-align: center; margin: 0 auto var(--space-xs);">Gratis & open source</h2>
+        <p class="section-subtitle" style="text-align: center; margin: 0 auto;">
+          Skrivar er heilt gratis. Kjelda er open på GitHub.
+        </p>
+      </div>
+
+      <div style="margin-top: var(--space-lg);" class="reveal">
+        <a href="https://github.com/lektorodd/skrivar/releases/latest" class="cta-button" style="animation: none;">
+          Last ned siste versjon
+          <span class="cta-sub">GitHub Releases · macOS 14+</span>
+        </a>
+        <p class="pricing-note">
+          Du treng ein <a href="https://elevenlabs.io">ElevenLabs</a>-nøkkel (krevst) og eventuelt ein
+          <a href="https://aistudio.google.com/apikey">Gemini</a>-nøkkel for nynorsk-omsetjing.
+          Begge har gratis nivå.
+        </p>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════ TECH STACK ═══════════════ -->
+  <section id="teknologi">
+    <div class="container" style="text-align: center;">
+      <div class="reveal">
+        <span class="section-label" style="justify-content: center;">Bygd med</span>
+        <h2 class="section-title" style="margin: 0 auto;">Lett, nativ, privat</h2>
+        <p class="section-subtitle" style="margin: 0 auto;">
+          Ein rein Swift-app — ikkje Electron, ikkje nettlesar, ingen telemetri. Lyd vert sendt til ElevenLabs for transkripsjon og eventuelt til Gemini for omsetjing. Ingenting anna.
+        </p>
+      </div>
+
+      <div class="tech-row reveal stagger">
+        <span class="tech-chip"><span class="chip-icon">🍎</span> Swift & SwiftUI</span>
+        <span class="tech-chip"><span class="chip-icon">🎙</span> ElevenLabs Scribe v2</span>
+        <span class="tech-chip"><span class="chip-icon">✦</span> Gemini 2.5 Flash</span>
+        <span class="tech-chip"><span class="chip-icon">📓</span> Obsidian URI</span>
+        <span class="tech-chip"><span class="chip-icon">🔑</span> macOS Nøkkelring</span>
+        <span class="tech-chip"><span class="chip-icon">♿️</span> Accessibility API</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ REQUIREMENTS ═══════════════ -->
+  <section id="krav">
+    <div class="container" style="text-align: center;">
+      <div class="reveal">
+        <h2 class="section-title" style="margin: 0 auto; font-size: clamp(1.4rem, 3vw, 2rem);">Krav</h2>
+        <p class="section-subtitle" style="margin: 0 auto;">
+          macOS 14 (Sonoma) eller nyare · Mikrofon · Internett-tilgang
+        </p>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════ FOOTER ═══════════════ -->
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-content">
+        <span class="footer-logo">✦ Skrivar</span>
+        <p class="footer-text">
+          <em>Skrivar</em> er nynorsk for <em>skribent</em>. Ein macOS-app for å gjere tale til tekst.
+        </p>
+        <p class="footer-text">
+          <a href="../">English version</a>
+        </p>
+      </div>
+    </div>
+  </footer>
+
+
+  <!-- ═══════════════ SCRIPTS ═══════════════ -->
+  <script>
+    // Scroll-triggered reveal
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, {
+      threshold: 0.12,
+      rootMargin: '0px 0px -40px 0px'
+    });
+
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+    // Rotate overlay pill modes
+    const modes = [
+      { label: '✦ Lyttar…',        color: '#00d1b2' },
+      { label: '✦ Transkriberer…',  color: '#00d1b2' },
+      { label: '✦ Omset til nynorsk…', color: '#00d1b2' },
+      { label: '✦ Ferdig! ✓',      color: '#22c55e' },
+      { label: 'Lyttar…',          color: '#e8eaf0' },
+    ];
+    let modeIndex = 0;
+    const pillLabel = document.querySelector('.pill-label');
+    const dots = document.querySelectorAll('.overlay-pill .dot');
+
+    if (pillLabel) {
+      setInterval(() => {
+        modeIndex = (modeIndex + 1) % modes.length;
+        pillLabel.textContent = modes[modeIndex].label;
+        dots.forEach(d => d.style.background = modes[modeIndex].color);
+      }, 2400);
+    }
+  </script>
+
+</body>
+</html>

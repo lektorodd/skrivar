@@ -6,7 +6,7 @@ enum MenuBarIcon {
     /// Idle icon: 5 waveform bars + text cursor, monochrome template.
     static func idle() -> NSImage {
         let size = NSSize(width: 18, height: 18)
-        let image = NSImage(size: size, flipping: false) { rect in
+        let image = NSImage(size: size, flipped: false) { rect in
             let barWidths: CGFloat = 2.0
             let gap: CGFloat = 2.0
             let barHeights: [CGFloat] = [5, 9, 14, 9, 5]
@@ -49,7 +49,7 @@ enum MenuBarIcon {
     /// Recording icon: animated waveform bars (taller), no cursor.
     static func recording() -> NSImage {
         let size = NSSize(width: 18, height: 18)
-        let image = NSImage(size: size, flipping: false) { rect in
+        let image = NSImage(size: size, flipped: false) { rect in
             let barWidths: CGFloat = 2.0
             let gap: CGFloat = 2.0
             let barHeights: [CGFloat] = [8, 14, 10, 16, 6]

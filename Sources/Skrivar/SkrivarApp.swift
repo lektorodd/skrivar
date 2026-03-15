@@ -26,13 +26,22 @@ struct SkrivarApp: App {
                 return
             }
 
+            // Flash is a non-recording action — trigger synthesis immediately
+            if mode == .flash {
+                performFlash()
+                return
+            }
+
+            // When a raw session is active, redirect quick capture to raw append
+            let effectiveMode = (mode == .quick && appState.isRawSession) ? .obsidianRaw : mode
+
             // Start recording after a short delay to filter accidental taps
             appState.pendingRecordTask?.cancel()
             let task = DispatchWorkItem { [self] in
                 startRecording(mode: appState.currentMode)
             }
             appState.pendingRecordTask = task
-            appState.currentMode = mode
+            appState.currentMode = effectiveMode
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: task)
         }
 
@@ -85,6 +94,9 @@ struct SkrivarApp: App {
                 NSApp.windows.first(where: { $0.title.contains("Welcome") })?.makeKeyAndOrderFront(nil)
             }
         }
+
+        // Check for updates on launch
+        UpdateChecker.check(appState: appState)
     }
 
     var body: some Scene {
@@ -93,9 +105,13 @@ struct SkrivarApp: App {
         } label: {
             Image(nsImage: menuBarNSImage)
         }
+        .onChange(of: appState.isRecording) { _, _ in }  // Force menu bar icon redraw
 
         Window("Skrivar Settings", id: "settings") {
             SettingsView(appState: appState, history: history)
+                .onOpenURL { url in
+                    handleURL(url)
+                }
         }
         .windowResizability(.contentSize)
         .defaultPosition(.center)
@@ -105,6 +121,49 @@ struct SkrivarApp: App {
         }
         .windowResizability(.contentSize)
         .defaultPosition(.center)
+    }
+
+    // MARK: - URL Scheme
+
+    private func handleURL(_ url: URL) {
+        guard url.scheme == "skrivar" else { return }
+        let action = url.host ?? ""
+        logger.info("URL scheme action: \(action)")
+
+        switch action {
+        case "raw-session":
+            guard appState.obsidianConfigured else {
+                showNotification(title: "Skrivar", message: "Set your Obsidian vault in Settings first.")
+                return
+            }
+            if !appState.isRawSession {
+                if let noteFile = ObsidianHelper.createRawNote(
+                    vault: appState.obsidianVaultName,
+                    folder: appState.obsidianFolder
+                ) {
+                    appState.startRawSession(noteFile: noteFile)
+                    appState.statusMessage = "◉ Raw session started"
+                    SoundManager.play(.recordStart)
+                    logger.info("Raw session started via URL: \(noteFile)")
+                }
+            }
+        case "flash":
+            performFlash()
+        case "end-session":
+            if appState.isRawSession {
+                _ = appState.endRawSession()
+                appState.statusMessage = "Raw session ended"
+                logger.info("Raw session ended via URL (no flash)")
+            }
+        case "settings":
+            openWindow(id: "settings")
+            NSApp.activate(ignoringOtherApps: true)
+        case "onboarding":
+            openWindow(id: "onboarding")
+            NSApp.activate(ignoringOtherApps: true)
+        default:
+            logger.warning("Unknown URL action: \(action)")
+        }
     }
 
     private var menuBarNSImage: NSImage {
@@ -141,10 +200,20 @@ struct SkrivarApp: App {
             // Shortcuts reference
             Button("⌃⌥  Quick capture") { }.disabled(true)
             Button("⌃⌥⇧  Translate") { }.disabled(true)
-            Button("⌃⌥⌘  → Obsidian") { }.disabled(true)
-            Button("⌃⌥⌘⇧  → Obsidian+") { }.disabled(true)
+            Button("⌃⌥⌘  Raw Dictation") { }.disabled(true)
+            Button("⌃⌥⌘⇧  Flash (synthesize)") { }.disabled(true)
 
             Divider()
+
+            // Raw session status
+            if appState.isRawSession {
+                Button("◉ Raw session · \(appState.rawSessionChunkCount) chunks") { }
+                    .disabled(true)
+                Button("End session") {
+                    _ = appState.endRawSession()
+                    appState.statusMessage = "Raw session ended"
+                }
+            }
 
             // Session stats
             Button("📊 Session: \(appState.sessionTranscriptions) transcriptions") { }
@@ -164,6 +233,14 @@ struct SkrivarApp: App {
 
             Divider()
 
+            if appState.updateAvailable {
+                Button("⬆️ Update available: v\(appState.latestVersion)") {
+                    if let url = URL(string: appState.updateURL) {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+            }
+
             Button("Quit Skrivar") {
                 keyListener.stop()
                 if recorder.isRecording {
@@ -182,15 +259,28 @@ struct SkrivarApp: App {
         guard !appState.isRecording else { return }
 
         // Validate mode requirements
-        if (mode == .obsidian || mode == .obsidianPolished) && !appState.obsidianConfigured {
+        if mode == .obsidianRaw && !appState.obsidianConfigured {
             showNotification(title: "Skrivar", message: "Set your Obsidian vault name in Settings first.")
             return
         }
-        if (mode == .translate || mode == .obsidianPolished) {
+        if mode == .translate {
             guard let key = KeychainHelper.loadGeminiKey(), !key.isEmpty else {
-                showNotification(title: "Skrivar", message: "Set your Gemini API key in Settings for polish mode.")
+                showNotification(title: "Skrivar", message: "Set your Gemini API key in Settings for translate mode.")
                 return
             }
+        }
+
+        // Raw dictation: create Obsidian note on first chunk
+        if mode == .obsidianRaw && !appState.isRawSession {
+            guard let noteFile = ObsidianHelper.createRawNote(
+                vault: appState.obsidianVaultName,
+                folder: appState.obsidianFolder
+            ) else {
+                showNotification(title: "Skrivar", message: "Failed to create Obsidian note.")
+                return
+            }
+            appState.startRawSession(noteFile: noteFile)
+            logger.info("Raw session started: \(noteFile)")
         }
 
         do {
@@ -283,10 +373,32 @@ struct SkrivarApp: App {
                     return
                 }
 
-                // Step 2: Optional Gemini polish (for translate & obsidianPolished modes)
+                // Step 2: Route based on mode
+                if mode == .obsidianRaw {
+                    // Raw dictation: append to Obsidian note, store chunk
+                    let success = ObsidianHelper.appendToNote(
+                        text: "\n\n\(text)",
+                        vault: appState.obsidianVaultName,
+                        file: appState.rawSessionNoteFile
+                    )
+                    await MainActor.run {
+                        appState.appendRawChunk(text)
+                        history.add(mode: mode, text: text, wasPolished: false)
+                        appState.recordTranscription(chars: text.count, method: nil, geminiUsage: nil)
+                        appState.statusMessage = success
+                            ? "◉ Raw · \(appState.rawSessionChunkCount) chunks"
+                            : "❌ Obsidian append error"
+                        overlay.hide()
+                        SoundManager.play(success ? .transcribeDone : .error)
+                    }
+                    logger.info("Raw chunk \(appState.rawSessionChunkCount): \(text.count) chars")
+                    return
+                }
+
+                // Step 2b: Optional Gemini polish (for translate mode)
                 var finalText = text
                 var geminiUsage: GeminiUsage? = nil
-                let shouldPolish = (mode == .translate || mode == .obsidianPolished)
+                let shouldPolish = (mode == .translate)
 
                 if shouldPolish {
                     if let geminiKey = KeychainHelper.loadGeminiKey(), !geminiKey.isEmpty {
@@ -308,39 +420,25 @@ struct SkrivarApp: App {
                     }
                 }
 
-                // Step 3: Deliver the text based on mode
-                let isObsidian = (mode == .obsidian || mode == .obsidianPolished)
-
-                if isObsidian {
-                    let success = ObsidianHelper.createNote(
-                        text: finalText,
-                        vault: appState.obsidianVaultName,
-                        folder: appState.obsidianFolder
-                    )
-                    await MainActor.run {
-                        history.add(mode: mode, text: finalText, wasPolished: shouldPolish)
-                        appState.recordTranscription(chars: finalText.count, method: nil, geminiUsage: geminiUsage)
-                        appState.statusMessage = success
-                            ? "✓ \(finalText.count) chars → Obsidian"
-                            : "❌ Obsidian error"
-                        overlay.hide()
-                        SoundManager.play(success ? .transcribeDone : .error)
-                    }
-                    logger.info("Sent \(finalText.count) chars to Obsidian")
-                } else {
-                    let method = TextInserter.insert(finalText)
-                    await MainActor.run {
-                        history.add(mode: mode, text: finalText, wasPolished: shouldPolish)
-                        appState.recordTranscription(chars: finalText.count, method: method, geminiUsage: geminiUsage)
-                        appState.statusMessage = "✓ \(finalText.count) chars via \(method.rawValue)"
-                        overlay.hide()
-                        SoundManager.play(.transcribeDone)
-                    }
-                    logger.info("Pasted \(finalText.count) chars via \(method.rawValue)")
+                // Step 3: Deliver text (quick capture or translate)
+                let method = TextInserter.insert(finalText)
+                await MainActor.run {
+                    history.add(mode: mode, text: finalText, wasPolished: shouldPolish)
+                    appState.recordTranscription(chars: finalText.count, method: method, geminiUsage: geminiUsage)
+                    appState.statusMessage = "✓ \(finalText.count) chars via \(method.rawValue)"
+                    overlay.hide()
+                    SoundManager.play(.transcribeDone)
                 }
+                logger.info("Pasted \(finalText.count) chars via \(method.rawValue)")
 
                 try? await Task.sleep(for: .seconds(3))
-                await MainActor.run { appState.statusMessage = "Ready" }
+                await MainActor.run {
+                    if appState.isRawSession {
+                        appState.statusMessage = "◉ Raw session · \(appState.rawSessionChunkCount) chunks"
+                    } else {
+                        appState.statusMessage = "Ready"
+                    }
+                }
 
             } catch {
                 logger.error("Transcription error: \(error.localizedDescription)")
@@ -371,6 +469,70 @@ struct SkrivarApp: App {
             return "❌ Server error — try again shortly"
         }
         return "❌ \(error.localizedDescription)"
+    }
+
+    // MARK: - Flash (Raw Dictation Synthesis)
+
+    private func performFlash() {
+        guard appState.isRawSession else {
+            showNotification(title: "Skrivar", message: "No raw session active — start one with ⌃⌥⌘ first.")
+            return
+        }
+        guard let geminiKey = KeychainHelper.loadGeminiKey(), !geminiKey.isEmpty else {
+            showNotification(title: "Skrivar", message: "Set your Gemini API key in Settings for Flash.")
+            return
+        }
+
+        let savedNoteFile = appState.rawSessionNoteFile
+        let chunks = appState.endRawSession()
+
+        guard !chunks.isEmpty else {
+            appState.statusMessage = "No chunks to synthesize"
+            return
+        }
+
+        appState.statusMessage = "⚡ Synthesizing..."
+        overlay.show(mode: .flash)
+        overlay.updateStatus("Synthesizing…")
+        SoundManager.play(.recordStop)
+
+        Task {
+            do {
+                let result = try await GeminiProcessor.synthesize(
+                    chunks: chunks,
+                    apiKey: geminiKey,
+                    targetLanguage: appState.geminiTargetLanguage
+                )
+
+                let synthesizedBlock = "\n\n---\n\n## Synthesized\n\n\(result.text)"
+                let success = ObsidianHelper.appendToNote(
+                    text: synthesizedBlock,
+                    vault: appState.obsidianVaultName,
+                    file: savedNoteFile
+                )
+
+                await MainActor.run {
+                    appState.recordTranscription(chars: result.text.count, method: nil, geminiUsage: result.usage)
+                    appState.statusMessage = success
+                        ? "⚡ \(result.text.count) chars synthesized → Obsidian"
+                        : "❌ Failed to append synthesis"
+                    overlay.hide()
+                    SoundManager.play(success ? .transcribeDone : .error)
+                }
+                logger.info("Flash: \(chunks.count) chunks → \(result.text.count) chars, \(result.usage.totalTokens) tokens")
+
+                try? await Task.sleep(for: .seconds(5))
+                await MainActor.run { appState.statusMessage = "Ready" }
+
+            } catch {
+                logger.error("Flash synthesis error: \(error.localizedDescription)")
+                await MainActor.run {
+                    appState.statusMessage = Self.friendlyErrorMessage(error)
+                    overlay.hide()
+                    SoundManager.play(.error)
+                }
+            }
+        }
     }
 
     private func showNotification(title: String, message: String) {

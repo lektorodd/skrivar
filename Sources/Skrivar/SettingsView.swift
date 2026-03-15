@@ -67,7 +67,7 @@ struct GeneralTab: View {
                     }
                 }
 
-                Text("Used in **Translate** (⌃⌥⇧) and **Obsidian+** (⌃⌥⌘⇧) modes")
+                Text("Used in **Translate** (⌃⌥⇧) and **Flash** (⌃⌥⌘⇧) modes")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -94,8 +94,8 @@ struct GeneralTab: View {
                 VStack(alignment: .leading, spacing: 6) {
                     shortcutRow("⌃⌥", "Quick capture → paste")
                     shortcutRow("⌃⌥⇧", "Translate → paste")
-                    shortcutRow("⌃⌥⌘", "Capture → Obsidian")
-                    shortcutRow("⌃⌥⌘⇧", "Polish → Obsidian")
+                    shortcutRow("⌃⌥⌘", "Raw Dictation → Obsidian")
+                    shortcutRow("⌃⌥⌘⇧", "Flash (synthesize session)")
                 }
                 .font(.callout)
 
@@ -463,8 +463,8 @@ struct HistoryTab: View {
         switch mode {
         case "Quick":     return .white
         case "Translate": return Color(red: 0, green: 0.82, blue: 0.70)
-        case "Obsidian":  return Color(red: 0.49, green: 0.23, blue: 0.93)
-        case "Obsidian+": return Color(red: 0.40, green: 0.50, blue: 0.90)
+        case "Raw":       return Color(red: 0.95, green: 0.75, blue: 0.20)
+        case "Flash":     return Color(red: 1.0, green: 0.85, blue: 0.30)
         default:          return .gray
         }
     }

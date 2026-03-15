@@ -6,10 +6,10 @@ private let logger = Logger(subsystem: "com.skrivar.app", category: "KeyListener
 
 /// Capture modes determined by modifier keys.
 enum CaptureMode: String {
-    case quick            = "Quick"           // Trigger alone
-    case translate        = "Translate"       // Trigger + ⇧
-    case obsidian         = "Obsidian"        // Trigger + ⌘
-    case obsidianPolished = "Obsidian+"       // Trigger + ⌘ + ⇧
+    case quick       = "Quick"           // Trigger alone
+    case translate   = "Translate"       // Trigger + ⇧
+    case obsidianRaw = "Raw"             // Trigger + ⌘
+    case flash       = "Flash"           // Trigger + ⌘ + ⇧
 
     /// Priority for mode locking — higher value = more specific mode.
     /// Prevents accidental downgrade when modifier keys are released out of order.
@@ -17,8 +17,8 @@ enum CaptureMode: String {
         switch self {
         case .quick: return 0
         case .translate: return 1
-        case .obsidian: return 2
-        case .obsidianPolished: return 3
+        case .obsidianRaw: return 2
+        case .flash: return 3
         }
     }
 }
@@ -102,8 +102,8 @@ final class KeyListener {
         let hasShift = flags.contains(.shift)
         let hasCommand = flags.contains(.command)
         switch (hasCommand, hasShift) {
-        case (true, true):   return .obsidianPolished
-        case (true, false):  return .obsidian
+        case (true, true):   return .flash
+        case (true, false):  return .obsidianRaw
         case (false, true):  return .translate
         case (false, false): return .quick
         }

@@ -202,19 +202,19 @@ struct OverlayContent: View {
 
     private var accentColor: Color {
         switch state.mode {
-        case .quick:            return .white
-        case .translate:        return Color(red: 0, green: 0.82, blue: 0.70)   // Teal
-        case .obsidian:         return Color(red: 0.49, green: 0.23, blue: 0.93) // Purple
-        case .obsidianPolished: return Color(red: 0.40, green: 0.50, blue: 0.90) // Purple-teal
+        case .quick:       return .white
+        case .translate:   return Color(red: 0, green: 0.82, blue: 0.70)   // Teal
+        case .obsidianRaw: return Color(red: 0.95, green: 0.75, blue: 0.20) // Warm amber
+        case .flash:       return Color(red: 1.0, green: 0.85, blue: 0.30)  // Bright gold
         }
     }
 
     private var modeLabel: String {
         switch state.mode {
-        case .quick:            return state.statusText
-        case .translate:        return "✦ \(state.statusText)"
-        case .obsidian:         return "⬡ \(state.statusText)"
-        case .obsidianPolished: return "⬡✦ \(state.statusText)"
+        case .quick:       return state.statusText
+        case .translate:   return "✦ \(state.statusText)"
+        case .obsidianRaw: return "◉ \(state.statusText)"
+        case .flash:       return "⚡ \(state.statusText)"
         }
     }
 }
