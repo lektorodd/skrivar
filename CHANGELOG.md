@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-03-15
+
+### Added
+- **Skip button** for API key entry during onboarding — lets returning users skip key re-entry
+- **Permissions section** in Settings for managing Accessibility and Microphone permissions post-onboarding
+- **Live permission status** in onboarding — polls every 2s with ✓/✗ indicators and Grant buttons
+
+### Changed
+- **Onboarding rewritten** — fixed shortcut labels (`⌥-` → `⌃⌥`), added live permission indicators, Grant buttons for Accessibility/Microphone, and macOS update warning for Accessibility re-grants
+- **Permission prompts deferred** — keychain, microphone, and keyboard listener activation now delayed until after onboarding completes on first launch
+- **Onboarding window** uses AppKit NSWindow directly (no URL scheme) for reliable first-launch display
+- **Keychain security** — added `kSecAttrAccessibleWhenUnlocked` to all Keychain operations
+
+### Fixed
+- **Post-onboarding crash** — `EXC_BAD_ACCESS` when closing onboarding window; now hidden via `orderOut` instead of `close` to avoid NSHostingView + @Observable deallocation crash
+- **Onboarding not showing** — was trying to open via URL scheme from `init()` where `openWindow` isn't available
+
 ## [0.3.0] - 2026-03-14
 
 ### Added

@@ -123,7 +123,12 @@ final class AppState {
         self.totalTranscriptions = UserDefaults.standard.integer(forKey: "totalTranscriptions")
         self.totalCharacters = UserDefaults.standard.integer(forKey: "totalCharacters")
         self.totalGeminiTokens = UserDefaults.standard.integer(forKey: "totalGeminiTokens")
-        self.apiKeySet = KeychainHelper.hasAPIKey()
+        // Defer keychain access on first launch to avoid premature macOS Keychain prompt
+        if UserDefaults.standard.bool(forKey: "onboardingCompleted") {
+            self.apiKeySet = KeychainHelper.hasAPIKey()
+        } else {
+            self.apiKeySet = false
+        }
     }
 
     func refreshAPIKeyStatus() {

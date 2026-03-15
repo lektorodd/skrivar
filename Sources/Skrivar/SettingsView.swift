@@ -1,4 +1,5 @@
 import SwiftUI
+import AVFoundation
 
 /// Settings view with tabbed layout: General, API Keys, History, Stats.
 struct SettingsView: View {
@@ -28,6 +29,9 @@ struct SettingsView: View {
 struct GeneralTab: View {
     @Bindable var appState: AppState
     @State private var soundsEnabled = SoundManager.isEnabled
+    @State private var accessibilityGranted = AXIsProcessTrusted()
+    @State private var microphoneGranted = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
+    @State private var permissionTimer: Timer?
     @State private var triggerKeyCode: Int = {
         let saved = UserDefaults.standard.integer(forKey: "triggerKeyCode")
         return saved > 0 ? saved : 27
@@ -115,6 +119,47 @@ struct GeneralTab: View {
                     .foregroundStyle(.secondary)
             }
 
+            Section("Permissions") {
+                HStack {
+                    Label("Accessibility", systemImage: "keyboard")
+                    Spacer()
+                    if accessibilityGranted {
+                        Label("Granted", systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                            .font(.caption)
+                    } else {
+                        Button("Grant") {
+                            let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+                            _ = AXIsProcessTrustedWithOptions(options)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+                }
+
+                HStack {
+                    Label("Microphone", systemImage: "mic")
+                    Spacer()
+                    if microphoneGranted {
+                        Label("Granted", systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                            .font(.caption)
+                    } else {
+                        Button("Grant") {
+                            AVCaptureDevice.requestAccess(for: .audio) { granted in
+                                DispatchQueue.main.async { microphoneGranted = granted }
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+                }
+
+                Text("After updating Skrivar, you may need to re-grant Accessibility in System Settings → Privacy & Security → Accessibility.")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+
             Section("System") {
                 Toggle("Launch at login", isOn: Binding(
                     get: { LaunchAtLogin.isEnabled },
@@ -142,6 +187,18 @@ struct GeneralTab: View {
             }
         }
         .formStyle(.grouped)
+        .onAppear {
+            accessibilityGranted = AXIsProcessTrusted()
+            microphoneGranted = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
+            permissionTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { _ in
+                accessibilityGranted = AXIsProcessTrusted()
+                microphoneGranted = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
+            }
+        }
+        .onDisappear {
+            permissionTimer?.invalidate()
+            permissionTimer = nil
+        }
     }
 
     private func shortcutRow(_ keys: String, _ description: String) -> some View {

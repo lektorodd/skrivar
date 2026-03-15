@@ -5,6 +5,9 @@ import os.log
 
 private let logger = Logger(subsystem: "com.skrivar.app", category: "App")
 
+/// File-level reference to the onboarding window (needed because SkrivarApp is a struct)
+private var onboardingWindow: NSWindow?
+
 @main
 struct SkrivarApp: App {
     @State private var appState = AppState()
@@ -75,23 +78,57 @@ struct SkrivarApp: App {
             }
         }
 
-        keyListener.start()
-        recorder.prewarm()
+        // Only start listening/recording/keychain if onboarding is already done.
+        // On first launch, these are deferred until onboarding completes.
+        let onboardingDone = UserDefaults.standard.bool(forKey: "onboardingCompleted")
+        if onboardingDone {
+            keyListener.start()
+            recorder.prewarm()
+            // Pre-flight keychain access so macOS prompts appear at startup, not during recording
+            _ = KeychainHelper.loadGeminiKey()
+            _ = KeychainHelper.loadAPIKey()
+        }
 
         // Apply dock icon preference
         let showDock = UserDefaults.standard.bool(forKey: "showDockIcon")
         NSApp.setActivationPolicy(showDock ? .regular : .accessory)
 
-        logger.info("Skrivar started")
+        logger.info("Skrivar started (onboarding \(onboardingDone ? "done" : "pending"))")
 
-        // Show onboarding on first launch
-        if !UserDefaults.standard.bool(forKey: "onboardingCompleted") {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                if let url = URL(string: "skrivar://onboarding") {
-                    NSWorkspace.shared.open(url)
-                }
-                // Fallback: open via Environment
-                NSApp.windows.first(where: { $0.title.contains("Welcome") })?.makeKeyAndOrderFront(nil)
+        // Show onboarding on first launch via AppKit (SwiftUI .task on MenuBarExtra
+        // only fires when menu is clicked, so we create the window directly)
+        if !onboardingDone {
+            // Observe onboarding completion (must use NotificationCenter directly,
+            // not SwiftUI .onReceive, because MenuBarExtra content hasn't rendered yet)
+            NotificationCenter.default.addObserver(
+                forName: .onboardingCompleted,
+                object: nil,
+                queue: .main
+            ) { [keyListener, recorder, appState] _ in
+                // Just hide — don't close/dealloc (NSHostingView + @Observable crashes on dealloc)
+                onboardingWindow?.orderOut(nil)
+                keyListener.start()
+                recorder.prewarm()
+                _ = KeychainHelper.loadGeminiKey()
+                _ = KeychainHelper.loadAPIKey()
+                appState.refreshAPIKeyStatus()
+                logger.info("Post-onboarding activation complete")
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [self] in
+                let hostingView = NSHostingView(rootView: OnboardingView(appState: appState))
+                let window = NSWindow(
+                    contentRect: NSRect(x: 0, y: 0, width: 520, height: 460),
+                    styleMask: [.titled, .closable],
+                    backing: .buffered,
+                    defer: false
+                )
+                window.contentView = hostingView
+                window.title = "Welcome to Skrivar"
+                window.center()
+                window.makeKeyAndOrderFront(nil)
+                NSApp.activate(ignoringOtherApps: true)
+                onboardingWindow = window
             }
         }
 

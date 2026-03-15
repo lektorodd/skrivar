@@ -1,4 +1,5 @@
 import SwiftUI
+import AVFoundation
 import os.log
 
 private let logger = Logger(subsystem: "com.skrivar.app", category: "Onboarding")
@@ -12,6 +13,11 @@ struct OnboardingView: View {
     @State private var geminiKey = ""
     @State private var keySaved = false
     @State private var geminiKeySaved = false
+
+    // Live permission status
+    @State private var accessibilityGranted = false
+    @State private var microphoneGranted = false
+    @State private var permissionTimer: Timer?
 
     private let totalSteps = 4
 
@@ -59,7 +65,6 @@ struct OnboardingView: View {
                         currentStep += 1
                     }
                     .buttonStyle(.borderedProminent)
-                    .disabled(currentStep == 2 && !keySaved)
                 } else {
                     Button("Start Using Skrivar") {
                         completeOnboarding()
@@ -69,7 +74,36 @@ struct OnboardingView: View {
             }
             .padding(24)
         }
-        .frame(width: 480, height: 400)
+        .frame(width: 520, height: 460)
+        .onAppear {
+            checkPermissions()
+            startPermissionPolling()
+        }
+        .onDisappear {
+            permissionTimer?.invalidate()
+            permissionTimer = nil
+        }
+    }
+
+    // MARK: - Permission Polling
+
+    private func startPermissionPolling() {
+        permissionTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { _ in
+            checkPermissions()
+        }
+    }
+
+    private func checkPermissions() {
+        accessibilityGranted = AXIsProcessTrusted()
+
+        switch AVCaptureDevice.authorizationStatus(for: .audio) {
+        case .authorized:
+            microphoneGranted = true
+        case .notDetermined:
+            microphoneGranted = false
+        default:
+            microphoneGranted = false
+        }
     }
 
     // MARK: - Steps
@@ -83,10 +117,10 @@ struct OnboardingView: View {
             Text("Welcome to Skrivar")
                 .font(.title.weight(.semibold))
 
-            Text("Speech-to-text for your Mac.\nHold **⌥-** to record, release to transcribe.")
+            Text("Speech-to-text for your Mac.\nHold **⌃⌥** (Control + Option) to record, release to transcribe.")
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
-                .frame(maxWidth: 320)
+                .frame(maxWidth: 360)
 
             VStack(alignment: .leading, spacing: 8) {
                 featureRow("waveform", "Record with a keyboard shortcut")
@@ -115,10 +149,11 @@ struct OnboardingView: View {
                     icon: "keyboard",
                     title: "Accessibility",
                     description: "To detect keyboard shortcuts and insert text",
+                    granted: accessibilityGranted,
                     action: {
-                        NSWorkspace.shared.open(
-                            URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
-                        )
+                        // Trigger the system prompt dialog
+                        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+                        _ = AXIsProcessTrustedWithOptions(options)
                     }
                 )
 
@@ -126,18 +161,30 @@ struct OnboardingView: View {
                     icon: "mic",
                     title: "Microphone",
                     description: "To record audio for transcription",
+                    granted: microphoneGranted,
                     action: {
-                        NSWorkspace.shared.open(
-                            URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone")!
-                        )
+                        AVCaptureDevice.requestAccess(for: .audio) { granted in
+                            DispatchQueue.main.async {
+                                microphoneGranted = granted
+                            }
+                        }
                     }
                 )
             }
-            .padding(.horizontal, 32)
+            .padding(.horizontal, 24)
 
-            Text("You may need to restart Skrivar after granting permissions.")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+            // Update warning
+            VStack(spacing: 4) {
+                Text("⚠️ After updating Skrivar, you may need to re-grant\nAccessibility permission in System Settings.")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .multilineTextAlignment(.center)
+
+                Text("This is a macOS requirement for unsigned apps.")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.top, 4)
         }
     }
 
@@ -147,57 +194,72 @@ struct OnboardingView: View {
                 .font(.system(size: 48))
                 .foregroundStyle(.tint)
 
-            Text("API Key")
+            Text("API Keys")
                 .font(.title2.weight(.semibold))
 
-            Text("Enter your ElevenLabs API key for transcription.")
+            Text("Enter your API keys. macOS may ask you to allow\nKeychain access — click **Always Allow**.")
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+                .font(.callout)
 
             VStack(spacing: 12) {
-                SecureField("ElevenLabs API key", text: $apiKey)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(maxWidth: 320)
+                // ElevenLabs key
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("ElevenLabs (required)")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.primary)
 
-                if keySaved {
-                    Label("Saved to Keychain", systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                        .font(.caption)
-                } else {
-                    Button("Save Key") {
-                        if KeychainHelper.saveAPIKey(apiKey) {
-                            keySaved = true
-                            appState.refreshAPIKeyStatus()
+                    SecureField("ElevenLabs API key", text: $apiKey)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(maxWidth: 340)
+
+                    if keySaved {
+                        Label("Saved to Keychain", systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                            .font(.caption)
+                    } else {
+                        Button("Save Key") {
+                            if KeychainHelper.saveAPIKey(apiKey) {
+                                keySaved = true
+                                appState.refreshAPIKeyStatus()
+                            }
                         }
+                        .disabled(apiKey.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
-                    .disabled(apiKey.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
 
-                Divider().padding(.vertical, 4)
+                Divider().padding(.vertical, 2)
 
-                Text("Optional: Gemini API key for text polishing")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
+                // Gemini key
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Gemini (optional — for Translate & Flash)")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.primary)
 
-                SecureField("Gemini API key (optional)", text: $geminiKey)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(maxWidth: 320)
+                    SecureField("Gemini API key", text: $geminiKey)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(maxWidth: 340)
 
-                if geminiKeySaved {
-                    Label("Saved to Keychain", systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                        .font(.caption)
-                } else if !geminiKey.trimmingCharacters(in: .whitespaces).isEmpty {
-                    Button("Save Gemini Key") {
-                        if KeychainHelper.saveGeminiKey(geminiKey) {
-                            geminiKeySaved = true
+                    if geminiKeySaved {
+                        Label("Saved to Keychain", systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                            .font(.caption)
+                    } else if !geminiKey.trimmingCharacters(in: .whitespaces).isEmpty {
+                        Button("Save Gemini Key") {
+                            if KeychainHelper.saveGeminiKey(geminiKey) {
+                                geminiKeySaved = true
+                            }
                         }
                     }
                 }
             }
 
-            Link("Get an API key →", destination: URL(string: "https://elevenlabs.io/")!)
-                .font(.caption)
+            HStack(spacing: 16) {
+                Link("ElevenLabs key →", destination: URL(string: "https://elevenlabs.io/app/settings/api-keys")!)
+                    .font(.caption)
+                Link("Gemini key →", destination: URL(string: "https://aistudio.google.com/apikey")!)
+                    .font(.caption)
+            }
         }
     }
 
@@ -214,12 +276,16 @@ struct OnboardingView: View {
                 Text("Quick reference:")
                     .font(.headline)
 
-                shortcutInfo("⌥ + -", "Quick capture → paste")
-                shortcutInfo("⌥ + - + ⇧", "Translate → paste")
-                shortcutInfo("⌥ + - + ⌘", "Capture → Obsidian")
-                shortcutInfo("⌥ + - + ⌘ + ⇧", "Polish → Obsidian")
+                shortcutInfo("⌃⌥", "Quick capture → paste")
+                shortcutInfo("⌃⌥⇧", "Translate → paste")
+                shortcutInfo("⌃⌥⌘", "Raw Dictation → Obsidian")
+                shortcutInfo("⌃⌥⌘⇧", "Flash (synthesize session)")
             }
             .padding(.horizontal, 32)
+
+            Text("Hold **Control + Option** to record, release to transcribe.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
 
             Toggle("Launch Skrivar at login", isOn: Binding(
                 get: { LaunchAtLogin.isEnabled },
@@ -241,7 +307,7 @@ struct OnboardingView: View {
         }
     }
 
-    private func permissionRow(icon: String, title: String, description: String, action: @escaping () -> Void) -> some View {
+    private func permissionRow(icon: String, title: String, description: String, granted: Bool, action: @escaping () -> Void) -> some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.title2)
@@ -249,15 +315,26 @@ struct OnboardingView: View {
                 .foregroundStyle(.tint)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.headline)
+                HStack(spacing: 6) {
+                    Text(title).font(.headline)
+                    Image(systemName: granted ? "checkmark.circle.fill" : "xmark.circle.fill")
+                        .foregroundStyle(granted ? .green : .red.opacity(0.7))
+                        .font(.caption)
+                }
                 Text(description).font(.caption).foregroundStyle(.secondary)
             }
 
             Spacer()
 
-            Button("Open") { action() }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
+            if granted {
+                Text("Granted")
+                    .font(.caption)
+                    .foregroundStyle(.green)
+            } else {
+                Button("Grant") { action() }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+            }
         }
     }
 
@@ -266,7 +343,7 @@ struct OnboardingView: View {
             Text(keys)
                 .font(.system(.callout, design: .monospaced))
                 .fontWeight(.medium)
-                .frame(width: 140, alignment: .leading)
+                .frame(width: 80, alignment: .leading)
             Text(desc)
                 .font(.callout)
                 .foregroundStyle(.secondary)
@@ -275,7 +352,12 @@ struct OnboardingView: View {
 
     private func completeOnboarding() {
         UserDefaults.standard.set(true, forKey: "onboardingCompleted")
-        dismiss()
         logger.info("Onboarding completed")
+        // Notify the app to start deferred subsystems
+        NotificationCenter.default.post(name: .onboardingCompleted, object: nil)
     }
+}
+
+extension Notification.Name {
+    static let onboardingCompleted = Notification.Name("onboardingCompleted")
 }
