@@ -381,17 +381,18 @@ struct SkrivarApp: App {
                         vault: appState.obsidianVaultName,
                         file: appState.rawSessionNoteFile
                     )
+                    let capturedText = text
                     await MainActor.run {
-                        appState.appendRawChunk(text)
-                        history.add(mode: mode, text: text, wasPolished: false)
-                        appState.recordTranscription(chars: text.count, method: nil, geminiUsage: nil)
+                        appState.appendRawChunk(capturedText)
+                        history.add(mode: mode, text: capturedText, wasPolished: false)
+                        appState.recordTranscription(chars: capturedText.count, method: nil, geminiUsage: nil)
                         appState.statusMessage = success
                             ? "◉ Raw · \(appState.rawSessionChunkCount) chunks"
                             : "❌ Obsidian append error"
                         overlay.hide()
                         SoundManager.play(success ? .transcribeDone : .error)
                     }
-                    logger.info("Raw chunk \(appState.rawSessionChunkCount): \(text.count) chars")
+                    logger.info("Raw chunk \(appState.rawSessionChunkCount): \(capturedText.count) chars")
                     return
                 }
 
@@ -422,14 +423,16 @@ struct SkrivarApp: App {
 
                 // Step 3: Deliver text (quick capture or translate)
                 let method = TextInserter.insert(finalText)
+                let capturedFinalText = finalText
+                let capturedGeminiUsage = geminiUsage
                 await MainActor.run {
-                    history.add(mode: mode, text: finalText, wasPolished: shouldPolish)
-                    appState.recordTranscription(chars: finalText.count, method: method, geminiUsage: geminiUsage)
-                    appState.statusMessage = "✓ \(finalText.count) chars via \(method.rawValue)"
+                    history.add(mode: mode, text: capturedFinalText, wasPolished: shouldPolish)
+                    appState.recordTranscription(chars: capturedFinalText.count, method: method, geminiUsage: capturedGeminiUsage)
+                    appState.statusMessage = "✓ \(capturedFinalText.count) chars via \(method.rawValue)"
                     overlay.hide()
                     SoundManager.play(.transcribeDone)
                 }
-                logger.info("Pasted \(finalText.count) chars via \(method.rawValue)")
+                logger.info("Pasted \(capturedFinalText.count) chars via \(method.rawValue)")
 
                 try? await Task.sleep(for: .seconds(3))
                 await MainActor.run {
