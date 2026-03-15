@@ -58,9 +58,22 @@ final class OverlayPanel: NSPanel {
 
     func hide() {
         overlayState.isVisible = false
+        overlayState.isError = false
         // Brief delay for exit animation
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
             self?.orderOut(nil)
+        }
+    }
+
+    /// Show an error message in the overlay with red styling, auto-hides after 3s.
+    func showError(_ message: String) {
+        overlayState.statusText = message
+        overlayState.isError = true
+        overlayState.isVisible = true
+        orderFrontRegardless()
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+            self?.hide()
         }
     }
 }
@@ -72,6 +85,7 @@ final class OverlayState {
     var mode: CaptureMode = .quick
     var statusText: String = "Listening…"
     var isVisible: Bool = false
+    var isError: Bool = false
     var audioLevel: CGFloat = 0.0
     var recordingStart: Date = Date()
 }
@@ -201,6 +215,7 @@ struct OverlayContent: View {
     // MARK: - Colors
 
     private var accentColor: Color {
+        if state.isError { return .red }
         switch state.mode {
         case .quick:       return .white
         case .translate:   return Color(red: 0, green: 0.82, blue: 0.70)   // Teal

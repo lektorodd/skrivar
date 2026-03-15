@@ -106,6 +106,8 @@ struct SkrivarApp: App {
             Image(nsImage: menuBarNSImage)
         }
         .onChange(of: appState.isRecording) { _, _ in }  // Force menu bar icon redraw
+        .onChange(of: appState.isTranscribing) { _, _ in }  // Force icon redraw
+        .onChange(of: appState.processingIconPhase) { _, _ in }  // Animate dots
 
         Window("Skrivar Settings", id: "settings") {
             SettingsView(appState: appState, history: history)
@@ -167,7 +169,13 @@ struct SkrivarApp: App {
     }
 
     private var menuBarNSImage: NSImage {
-        appState.isRecording ? MenuBarIcon.recording() : MenuBarIcon.idle()
+        if appState.isRecording {
+            return MenuBarIcon.recording(phase: appState.processingIconPhase)
+        } else if appState.isTranscribing {
+            return MenuBarIcon.processing(phase: appState.processingIconPhase)
+        } else {
+            return MenuBarIcon.idle()
+        }
     }
 
     @ViewBuilder
@@ -290,6 +298,7 @@ struct SkrivarApp: App {
             appState.currentMode = mode
             appState.lockedMode = mode  // Lock mode at start
             appState.statusMessage = "\(mode.rawValue) — Recording..."
+            startProcessingAnimation()  // Animate icon from recording start
             DispatchQueue.main.async {
                 self.overlay.show(mode: mode)
             }
@@ -308,8 +317,12 @@ struct SkrivarApp: App {
         let wavData = recorder.stop()
         SoundManager.play(.recordStop)
         appState.isRecording = false
+        appState.isTranscribing = true
         appState.statusMessage = "Transcribing..."
         logger.info("Recording stopped, \(wavData.count) bytes, mode: \(mode.rawValue)")
+
+        // Start processing icon animation
+        startProcessingAnimation()
 
         DispatchQueue.main.async {
             overlay.updateStatus("Transcribing…")
@@ -317,7 +330,11 @@ struct SkrivarApp: App {
 
         guard !wavData.isEmpty else {
             appState.statusMessage = "No audio"
-            DispatchQueue.main.async { overlay.hide() }
+            DispatchQueue.main.async {
+                self.stopProcessingAnimation()
+                self.appState.isTranscribing = false
+                overlay.hide()
+            }
             return
         }
 
@@ -325,8 +342,10 @@ struct SkrivarApp: App {
             do {
                 guard let apiKey = KeychainHelper.loadAPIKey() else {
                     await MainActor.run {
+                        stopProcessingAnimation()
+                        appState.isTranscribing = false
                         appState.statusMessage = "No API key"
-                        overlay.hide()
+                        overlay.showError("No API key")
                     }
                     return
                 }
@@ -358,8 +377,10 @@ struct SkrivarApp: App {
                 if let error = lastError {
                     let userMessage = Self.friendlyErrorMessage(error)
                     await MainActor.run {
+                        stopProcessingAnimation()
+                        appState.isTranscribing = false
                         appState.statusMessage = userMessage
-                        overlay.hide()
+                        overlay.showError(userMessage)
                         SoundManager.play(.error)
                     }
                     return
@@ -367,6 +388,8 @@ struct SkrivarApp: App {
 
                 guard !text.isEmpty else {
                     await MainActor.run {
+                        stopProcessingAnimation()
+                        appState.isTranscribing = false
                         appState.statusMessage = "No speech detected"
                         overlay.hide()
                     }
@@ -383,14 +406,20 @@ struct SkrivarApp: App {
                     )
                     let capturedText = text
                     await MainActor.run {
+                        stopProcessingAnimation()
+                        appState.isTranscribing = false
                         appState.appendRawChunk(capturedText)
                         history.add(mode: mode, text: capturedText, wasPolished: false)
                         appState.recordTranscription(chars: capturedText.count, method: nil, geminiUsage: nil)
-                        appState.statusMessage = success
-                            ? "◉ Raw · \(appState.rawSessionChunkCount) chunks"
-                            : "❌ Obsidian append error"
-                        overlay.hide()
-                        SoundManager.play(success ? .transcribeDone : .error)
+                        if success {
+                            appState.statusMessage = "◉ Raw · \(appState.rawSessionChunkCount) chunks"
+                            overlay.hide()
+                            SoundManager.play(.transcribeDone)
+                        } else {
+                            appState.statusMessage = "❌ Obsidian append error"
+                            overlay.showError("Obsidian append failed")
+                            SoundManager.play(.error)
+                        }
                     }
                     logger.info("Raw chunk \(appState.rawSessionChunkCount): \(capturedText.count) chars")
                     return
@@ -426,6 +455,8 @@ struct SkrivarApp: App {
                 let capturedFinalText = finalText
                 let capturedGeminiUsage = geminiUsage
                 await MainActor.run {
+                    stopProcessingAnimation()
+                    appState.isTranscribing = false
                     history.add(mode: mode, text: capturedFinalText, wasPolished: shouldPolish)
                     appState.recordTranscription(chars: capturedFinalText.count, method: method, geminiUsage: capturedGeminiUsage)
                     appState.statusMessage = "✓ \(capturedFinalText.count) chars via \(method.rawValue)"
@@ -446,8 +477,11 @@ struct SkrivarApp: App {
             } catch {
                 logger.error("Transcription error: \(error.localizedDescription)")
                 await MainActor.run {
-                    appState.statusMessage = Self.friendlyErrorMessage(error)
-                    overlay.hide()
+                    stopProcessingAnimation()
+                    appState.isTranscribing = false
+                    let msg = Self.friendlyErrorMessage(error)
+                    appState.statusMessage = msg
+                    overlay.showError(msg)
                     SoundManager.play(.error)
                 }
             }
@@ -548,5 +582,21 @@ struct SkrivarApp: App {
             trigger: nil
         )
         UNUserNotificationCenter.current().add(request)
+    }
+
+    // MARK: - Processing Icon Animation
+
+    private func startProcessingAnimation() {
+        stopProcessingAnimation()
+        appState.processingIconPhase = 0
+        iconTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { [self] _ in
+            appState.processingIconPhase = (appState.processingIconPhase + 1) % 3
+        }
+    }
+
+    private func stopProcessingAnimation() {
+        iconTimer?.invalidate()
+        iconTimer = nil
+        appState.processingIconPhase = 0
     }
 }
