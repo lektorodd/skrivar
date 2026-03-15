@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Quick Retake** — release `⌃⌥` and re-press within 1s to cancel in-flight transcription and start fresh recording; overlay flashes "↺ Retake"
+- **Cancel transcription** — press Escape during transcription to abort entirely (no paste, no API waste)
+- **Auto-stop on silence (VAD)** — optional setting to automatically stop recording after configurable seconds of silence (1-10s, default 3s, off by default)
+- **Settings: Recording section** — new section in General settings with VAD toggle and silence duration stepper
+
 ## [0.4.1] - 2026-03-15
 
 ### Added

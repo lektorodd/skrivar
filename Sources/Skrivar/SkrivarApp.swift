@@ -26,6 +26,14 @@ struct SkrivarApp: App {
                 return
             }
 
+            // Quick Retake: if transcription is in flight, cancel it and restart
+            if appState.isTranscribing {
+                cancelTranscription(hideOverlay: false)
+                overlay.updateStatus("↺ Retake")
+                logger.info("Retake — cancelled in-flight transcription")
+                // Fall through to start a new recording
+            }
+
             // Flash is a non-recording action — trigger synthesis immediately
             if mode == .flash {
                 performFlash()
@@ -68,10 +76,29 @@ struct SkrivarApp: App {
             }
         }
 
+        // Cancel transcription via Escape key
+        keyListener.onCancelPressed = { [self] in
+            guard appState.isTranscribing else { return }
+            cancelTranscription()
+            appState.statusMessage = "Cancelled"
+            logger.info("Transcription cancelled via Escape")
+            SoundManager.play(.recordStop)
+        }
+
         // Wire audio level → overlay waveform
         recorder.onAudioLevel = { [self] level in
             DispatchQueue.main.async {
                 overlay.updateAudioLevel(level)
+            }
+        }
+
+        // Wire VAD: auto-stop recording on silence
+        recorder.onSilenceDetected = { [self] in
+            DispatchQueue.main.async {
+                guard appState.isRecording else { return }
+                logger.info("VAD: silence detected, auto-stopping")
+                overlay.updateStatus("Auto-stopped")
+                stopRecording()
             }
         }
 
@@ -292,6 +319,8 @@ struct SkrivarApp: App {
         }
 
         do {
+            // Configure VAD
+            recorder.silenceThresholdSeconds = appState.vadEnabled ? appState.vadSilenceSeconds : 0
             try recorder.start()
             SoundManager.play(.recordStart)
             appState.isRecording = true
@@ -338,7 +367,7 @@ struct SkrivarApp: App {
             return
         }
 
-        Task {
+        appState.cancellableTranscriptionTask = Task {
             do {
                 guard let apiKey = KeychainHelper.loadAPIKey() else {
                     await MainActor.run {
@@ -354,6 +383,7 @@ struct SkrivarApp: App {
                 var lastError: Error?
 
                 for attempt in 1...2 {
+                    guard !Task.isCancelled else { return }
                     do {
                         text = try await Transcriber.transcribe(
                             wavData: wavData,
@@ -373,6 +403,8 @@ struct SkrivarApp: App {
                         }
                     }
                 }
+
+                guard !Task.isCancelled else { return }
 
                 if let error = lastError {
                     let userMessage = Self.friendlyErrorMessage(error)
@@ -395,6 +427,8 @@ struct SkrivarApp: App {
                     }
                     return
                 }
+
+                guard !Task.isCancelled else { return }
 
                 // Step 2: Route based on mode
                 if mode == .obsidianRaw {
@@ -431,6 +465,7 @@ struct SkrivarApp: App {
                 let shouldPolish = (mode == .translate)
 
                 if shouldPolish {
+                    guard !Task.isCancelled else { return }
                     if let geminiKey = KeychainHelper.loadGeminiKey(), !geminiKey.isEmpty {
                         await MainActor.run {
                             appState.statusMessage = "Polishing..."
@@ -449,6 +484,16 @@ struct SkrivarApp: App {
                         }
                     }
                 }
+
+                guard !Task.isCancelled else { return }
+
+                // Brief retake window — gives user time to re-press ⌃⌥ to cancel
+                // before text is pasted, even if the API responded instantly
+                await MainActor.run {
+                    overlay.updateStatus("Pasting…")
+                }
+                try? await Task.sleep(for: .milliseconds(500))
+                guard !Task.isCancelled else { return }
 
                 // Step 3: Deliver text (quick capture or translate)
                 let method = TextInserter.insert(finalText)
@@ -598,5 +643,18 @@ struct SkrivarApp: App {
         iconTimer?.invalidate()
         iconTimer = nil
         appState.processingIconPhase = 0
+    }
+
+    // MARK: - Cancel / Retake
+
+    /// Cancel in-flight transcription, reset state, hide overlay.
+    private func cancelTranscription(hideOverlay: Bool = true) {
+        appState.cancellableTranscriptionTask?.cancel()
+        appState.cancellableTranscriptionTask = nil
+        stopProcessingAnimation()
+        appState.isTranscribing = false
+        if hideOverlay {
+            overlay.hide()
+        }
     }
 }

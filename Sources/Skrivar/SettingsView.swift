@@ -185,6 +185,28 @@ struct GeneralTab: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
+            Section("Recording") {
+                Toggle("Auto-stop on silence", isOn: Binding(
+                    get: { appState.vadEnabled },
+                    set: { appState.vadEnabled = $0 }
+                ))
+
+                if appState.vadEnabled {
+                    Stepper(
+                        "Silence duration: \(Int(appState.vadSilenceSeconds))s",
+                        value: Binding(
+                            get: { appState.vadSilenceSeconds },
+                            set: { appState.vadSilenceSeconds = $0 }
+                        ),
+                        in: 1...10,
+                        step: 1
+                    )
+                    Text("Automatically stop recording after \(Int(appState.vadSilenceSeconds)) seconds of silence")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
         }
         .formStyle(.grouped)
         .onAppear {

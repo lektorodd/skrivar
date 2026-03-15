@@ -59,9 +59,10 @@ final class OverlayPanel: NSPanel {
     func hide() {
         overlayState.isVisible = false
         overlayState.isError = false
-        // Brief delay for exit animation
+        // Brief delay for exit animation — but only orderOut if still hidden
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-            self?.orderOut(nil)
+            guard let self, !self.overlayState.isVisible else { return }
+            self.orderOut(nil)
         }
     }
 

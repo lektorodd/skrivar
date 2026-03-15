@@ -31,6 +31,19 @@ final class AudioRecorder {
     /// Callback for real-time audio level (0.0 – 1.0), fired on audio thread.
     var onAudioLevel: ((Float) -> Void)?
 
+    /// Callback fired when silence has been detected for the configured duration.
+    var onSilenceDetected: (() -> Void)?
+
+    /// Duration of silence (in seconds) before `onSilenceDetected` fires. 0 = disabled.
+    var silenceThresholdSeconds: Double = 0
+
+    /// Tracks consecutive silent frames for VAD.
+    private var consecutiveSilentFrames: Int = 0
+    private var totalRecordedFrames: Int = 0
+    private let silenceRMSThreshold: Float = 0.005
+    private let minimumRecordingFrames: Int = 16000  // ~1 second at 16kHz before VAD activates
+    private var silenceCallbackFired = false
+
     // MARK: - Device Enumeration
 
     /// List all available audio input devices.
@@ -164,6 +177,9 @@ final class AudioRecorder {
 
         audioData = Data()
         audioData.reserveCapacity(16000 * 2 * 10) // Reserve ~10s at 16kHz 16-bit
+        consecutiveSilentFrames = 0
+        totalRecordedFrames = 0
+        silenceCallbackFired = false
         let inputNode = engine.inputNode
         let inputFormat = inputNode.inputFormat(forBus: 0)
 
@@ -199,6 +215,24 @@ final class AudioRecorder {
                 let rms = sqrtf(sum / Float(max(frameLength, 1)))
                 let level = min(rms * 4.0, 1.0) // Scale up for visibility
                 levelCallback(level)
+
+                // VAD: track silence duration
+                // Only activate after minimum recording time to avoid false triggers
+                self.totalRecordedFrames += frameLength
+                if self.silenceThresholdSeconds > 0
+                    && !self.silenceCallbackFired
+                    && self.totalRecordedFrames > self.minimumRecordingFrames {
+                    if rms < self.silenceRMSThreshold {
+                        self.consecutiveSilentFrames += frameLength
+                        let silentSeconds = Double(self.consecutiveSilentFrames) / inputFormat.sampleRate
+                        if silentSeconds >= self.silenceThresholdSeconds {
+                            self.silenceCallbackFired = true
+                            self.onSilenceDetected?()
+                        }
+                    } else {
+                        self.consecutiveSilentFrames = 0
+                    }
+                }
             }
 
             // Convert to target format

@@ -29,9 +29,12 @@ enum CaptureMode: String {
 final class KeyListener {
     private var globalMonitor: Any?
     private var localMonitor: Any?
+    private var globalKeyMonitor: Any?
+    private var localKeyMonitor: Any?
     var onRecordStart: ((CaptureMode) -> Void)?
     var onRecordStop: (() -> Void)?
     var onModeChange: ((CaptureMode) -> Void)?
+    var onCancelPressed: (() -> Void)?
     private var isKeyDown = false
     private var activeMode: CaptureMode = .quick
 
@@ -52,12 +55,30 @@ final class KeyListener {
             return event
         }
 
+        // Monitor Escape key globally for cancel
+        globalKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            self?.handleKeyDown(event)
+        }
+        localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            self?.handleKeyDown(event)
+            return event
+        }
+
         if globalMonitor != nil {
             print("[KeyListener] Global monitor started ✓")
             logger.info("Global key monitor started successfully")
         } else {
             print("[KeyListener] Failed to start global monitor — check Accessibility")
             logger.error("Failed to start global key monitor")
+        }
+    }
+
+    private func handleKeyDown(_ event: NSEvent) {
+        // Escape key = keyCode 53
+        if event.keyCode == 53 {
+            DispatchQueue.main.async { [weak self] in
+                self?.onCancelPressed?()
+            }
         }
     }
 
@@ -116,8 +137,16 @@ final class KeyListener {
         if let monitor = localMonitor {
             NSEvent.removeMonitor(monitor)
         }
+        if let monitor = globalKeyMonitor {
+            NSEvent.removeMonitor(monitor)
+        }
+        if let monitor = localKeyMonitor {
+            NSEvent.removeMonitor(monitor)
+        }
         globalMonitor = nil
         localMonitor = nil
+        globalKeyMonitor = nil
+        localKeyMonitor = nil
         logger.info("Key monitor stopped")
     }
 }

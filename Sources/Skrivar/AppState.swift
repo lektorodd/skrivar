@@ -10,7 +10,18 @@ final class AppState {
     /// Mode locked at recording start — used for transcription decisions
     /// (prevents mode loss when user releases Shift before ⌃⌥)
     var lockedMode: CaptureMode = .quick
+
+    // VAD (Voice Activity Detection) settings
+    var vadEnabled: Bool = UserDefaults.standard.bool(forKey: "vadEnabled") {
+        didSet { UserDefaults.standard.set(vadEnabled, forKey: "vadEnabled") }
+    }
+    var vadSilenceSeconds: Double = UserDefaults.standard.double(forKey: "vadSilenceSeconds") == 0
+        ? 3.0
+        : UserDefaults.standard.double(forKey: "vadSilenceSeconds") {
+        didSet { UserDefaults.standard.set(vadSilenceSeconds, forKey: "vadSilenceSeconds") }
+    }
     var pendingRecordTask: DispatchWorkItem?
+    var cancellableTranscriptionTask: Task<Void, Never>?
     var statusMessage = "Ready"
     var apiKeySet = false
     var geminiEnabled: Bool {
