@@ -24,8 +24,7 @@ enum CaptureMode: String {
 }
 
 /// Global keyboard listener using NSEvent monitors.
-/// Uses Control+Option (⌃⌥) held together as the trigger — both are modifier keys
-/// so no characters are produced, and it's an ergonomic right-hand combo.
+/// Uses a configurable modifier combo (default: ⌃⌥) as the trigger.
 final class KeyListener {
     private var globalMonitor: Any?
     private var localMonitor: Any?
@@ -37,6 +36,9 @@ final class KeyListener {
     var onCancelPressed: (() -> Void)?
     private var isKeyDown = false
     private var activeMode: CaptureMode = .quick
+
+    /// The modifier flags that trigger recording. Set from AppState.
+    var triggerFlags: NSEvent.ModifierFlags = [.control, .option]
 
     /// Available trigger options for the settings UI.
     static let triggerKeyOptions: [(name: String, code: Int, display: String)] = [
@@ -84,28 +86,26 @@ final class KeyListener {
 
     private func handleFlags(_ event: NSEvent) {
         let flags = event.modifierFlags
-        let triggerActive = flags.contains(.control) && flags.contains(.option)
+        let triggerActive = flags.contains(triggerFlags)
 
         if triggerActive && !isKeyDown {
-            // ⌃⌥ pressed — start recording
+            // Trigger pressed — start recording
             isKeyDown = true
             activeMode = computeMode(flags: flags)
-            print("[KeyListener] ⌃⌥ pressed — mode: \(activeMode.rawValue)")
-            logger.info("⌃⌥ pressed — mode: \(self.activeMode.rawValue)")
+            logger.info("Trigger pressed — mode: \(self.activeMode.rawValue)")
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 self.onRecordStart?(self.activeMode)
             }
         } else if !triggerActive && isKeyDown {
-            // ⌃⌥ released — stop recording
+            // Trigger released — stop recording
             isKeyDown = false
-            print("[KeyListener] ⌃⌥ released — stopping")
-            logger.info("⌃⌥ released — stopping (\(self.activeMode.rawValue))")
+            logger.info("Trigger released — stopping (\(self.activeMode.rawValue))")
             DispatchQueue.main.async { [weak self] in
                 self?.onRecordStop?()
             }
         } else if triggerActive && isKeyDown {
-            // While recording, check if mode changed (Shift/Cmd toggled)
+            // While recording, check if mode changed (extra modifiers toggled)
             let newMode = computeMode(flags: flags)
             if newMode != activeMode {
                 activeMode = newMode
@@ -118,10 +118,12 @@ final class KeyListener {
         }
     }
 
-    /// Compute the capture mode from current modifier flags.
+    /// Compute the capture mode from extra modifier flags beyond the trigger.
     private func computeMode(flags: NSEvent.ModifierFlags) -> CaptureMode {
-        let hasShift = flags.contains(.shift)
-        let hasCommand = flags.contains(.command)
+        // Check for modifiers BEYOND the trigger combo
+        let extraFlags = flags.subtracting(triggerFlags)
+        let hasShift = extraFlags.contains(.shift)
+        let hasCommand = extraFlags.contains(.command)
         switch (hasCommand, hasShift) {
         case (true, true):   return .flash
         case (true, false):  return .obsidianRaw

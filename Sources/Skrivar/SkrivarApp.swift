@@ -12,6 +12,7 @@ struct SkrivarApp: App {
     private let keyListener = KeyListener()
     private let recorder = AudioRecorder()
     private let overlay = OverlayPanel()
+    private let previewPanel = PreviewPanel()
     private let history = TranscriptionHistory()
     @State private var iconPhase: Double = 0.0
     @State private var iconTimer: Timer?
@@ -102,6 +103,7 @@ struct SkrivarApp: App {
             }
         }
 
+        keyListener.triggerFlags = appState.triggerModifiers
         keyListener.start()
         recorder.prewarm()
 
@@ -484,19 +486,53 @@ struct SkrivarApp: App {
                 guard !Task.isCancelled else { return }
 
                 // Step 3: Deliver text (quick capture or translate)
-                let method = TextInserter.insert(finalText)
+                // Track frontmost app for per-app rules Settings UI
+                if let app = NSWorkspace.shared.frontmostApplication,
+                   let bundleId = app.bundleIdentifier {
+                    await MainActor.run {
+                        appState.trackApp(bundleId: bundleId, name: app.localizedName ?? bundleId)
+                    }
+                }
+
+                let usePreview = await MainActor.run { appState.previewEnabled }
                 let capturedFinalText = finalText
                 let capturedGeminiUsage = geminiUsage
-                await MainActor.run {
-                    stopProcessingAnimation()
-                    appState.isTranscribing = false
-                    history.add(mode: mode, text: capturedFinalText, wasPolished: shouldPolish)
-                    appState.recordTranscription(chars: capturedFinalText.count, method: method, geminiUsage: capturedGeminiUsage)
-                    appState.statusMessage = "✓ \(capturedFinalText.count) chars via \(method.rawValue)"
-                    overlay.hide()
-                    SoundManager.play(.transcribeDone)
+
+                if usePreview {
+                    // Show preview panel instead of auto-pasting
+                    await MainActor.run {
+                        stopProcessingAnimation()
+                        appState.isTranscribing = false
+                        overlay.hide()
+                        SoundManager.play(.transcribeDone)
+
+                        previewPanel.onPaste = { [self] text in
+                            let rules = appState.insertionRules
+                            let method = TextInserter.insert(text, rules: rules)
+                            history.add(mode: mode, text: text, wasPolished: shouldPolish)
+                            appState.recordTranscription(chars: text.count, method: method, geminiUsage: capturedGeminiUsage)
+                            appState.statusMessage = "✓ \(text.count) chars via \(method.rawValue)"
+                        }
+                        previewPanel.onDiscard = { [self] in
+                            appState.statusMessage = "Discarded"
+                        }
+                        previewPanel.show(text: capturedFinalText)
+                    }
+                } else {
+                    // Direct paste (original behavior)
+                    let rules = await MainActor.run { appState.insertionRules }
+                    let method = TextInserter.insert(capturedFinalText, rules: rules)
+                    await MainActor.run {
+                        stopProcessingAnimation()
+                        appState.isTranscribing = false
+                        history.add(mode: mode, text: capturedFinalText, wasPolished: shouldPolish)
+                        appState.recordTranscription(chars: capturedFinalText.count, method: method, geminiUsage: capturedGeminiUsage)
+                        appState.statusMessage = "✓ \(capturedFinalText.count) chars via \(method.rawValue)"
+                        overlay.hide()
+                        SoundManager.play(.transcribeDone)
+                    }
                 }
-                logger.info("Pasted \(capturedFinalText.count) chars via \(method.rawValue)")
+                logger.info("Delivered \(capturedFinalText.count) chars")
 
                 try? await Task.sleep(for: .seconds(3))
                 await MainActor.run {

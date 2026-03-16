@@ -6,17 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [0.4.3] - 2026-03-15
+## [0.5.0] - 2026-03-16
 
 ### Added
-- **Conditional audio compression** — recordings longer than 30s are automatically compressed from WAV to AAC (64kbps) before upload, reducing upload size ~10x
+- **Customizable global hotkey** — choose trigger combo in Settings: ⌃⌥ (default), ⌃⇧, or ⌥⇧
+- **Preview before paste** — opt-in floating panel to review/edit transcribed text before pasting (⏎ paste, ⎋ discard, ⌘E edit, auto-paste after 5s)
+- **Per-app insertion rules** — override text insertion method (Auto/AX API/Clipboard) per app in Settings
+- **Conditional audio compression** — recordings longer than 30s are automatically compressed from WAV to AAC (64kbps) before upload
+- **Settings: Delivery section** — preview toggle with description
 - **Settings: compression toggle** — enable/disable compression in Settings → Audio
 
 ### Changed
-- **Settings reorganized** — split overloaded General tab into General (language, Obsidian, shortcuts, permissions, system) and Audio (microphone, recording, sound effects) tabs
-- **Settings captions** — improved readability of help text throughout
-- **Menu bar dropdown** — stripped to essentials (status, settings, quit); removed redundant config info and shortcut reference
+- **Settings reorganized** — split into General and Audio tabs for better navigation
+- **Menu bar dropdown** — stripped to essentials (status, settings, quit)
 - **Update checker** — dev builds no longer show false "Update available" banner
+
+### Fixed
+- **Overlay pill light mode** — waveform bars and border now use adaptive color (dark in light mode, white in dark mode)
+- **Overlay pill corners** — removed rectangular artifact visible behind the capsule shape
+- **Preview panel appearance** — respects system light/dark mode (utility window, not HUD)
+
+## [0.4.3] - 2026-03-15
+
+### Changed
+- **Menu bar dropdown** — stripped to essentials
+- **Update checker** — dev builds skip update check
 
 ## [0.4.2] - 2026-03-15
 

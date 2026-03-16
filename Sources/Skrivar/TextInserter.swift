@@ -11,11 +11,35 @@ enum InsertionMethod: String {
 }
 
 /// Inserts text at the cursor: tries AX API first, falls back to clipboard paste.
+/// Supports per-app rules to force a specific method.
 enum TextInserter {
 
     /// Insert text at the current cursor position. Returns the method used.
+    /// If `rules` contains a bundle ID match, that method is forced.
     @discardableResult
-    static func insert(_ text: String) -> InsertionMethod {
+    static func insert(_ text: String, rules: [String: String] = [:]) -> InsertionMethod {
+        // Check per-app rule
+        if let app = NSWorkspace.shared.frontmostApplication,
+           let bundleId = app.bundleIdentifier,
+           let rule = rules[bundleId] {
+            switch rule {
+            case "accessibility":
+                if insertViaAccessibility(text) {
+                    logger.info("Inserted via AX API (rule) — \(app.localizedName ?? bundleId)")
+                    return .accessibility
+                }
+                logger.info("AX rule failed, falling back to clipboard — \(app.localizedName ?? bundleId)")
+                insertViaClipboard(text)
+                return .clipboard
+            case "clipboard":
+                logger.info("Inserted via clipboard (rule) — \(app.localizedName ?? bundleId)")
+                insertViaClipboard(text)
+                return .clipboard
+            default:
+                break  // "auto" — fall through to normal behavior
+            }
+        }
+
         if insertViaAccessibility(text) {
             logger.info("Inserted via AX API (\(text.count) chars)")
             return .accessibility

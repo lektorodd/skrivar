@@ -76,15 +76,34 @@ struct GeneralTab: View {
             }
 
             Section("Shortcuts") {
+                Picker("Trigger combo:", selection: Binding(
+                    get: { appState.triggerModifiersRaw },
+                    set: { appState.triggerModifiersRaw = $0 }
+                )) {
+                    ForEach(AppState.triggerPresets, id: \.rawValue) { preset in
+                        Text(preset.name).tag(preset.rawValue)
+                    }
+                }
+
                 VStack(alignment: .leading, spacing: 6) {
-                    shortcutRow("⌃⌥", "Quick capture → paste")
-                    shortcutRow("⌃⌥⇧", "Translate → paste")
-                    shortcutRow("⌃⌥⌘", "Raw Dictation → Obsidian")
-                    shortcutRow("⌃⌥⌘⇧", "Flash (synthesize session)")
+                    shortcutRow(appState.triggerDisplayString, "Quick capture → paste")
+                    shortcutRow("\(appState.triggerDisplayString)⇧", "Translate → paste")
+                    shortcutRow("\(appState.triggerDisplayString)⌘", "Raw Dictation → Obsidian")
+                    shortcutRow("\(appState.triggerDisplayString)⌘⇧", "Flash (synthesize session)")
                 }
                 .font(.callout)
 
-                Text("Hold Control + Option to record, release to transcribe")
+                Text("Hold trigger to record, release to transcribe. Restart app after changing trigger.")
+                    .font(.caption)
+                    .foregroundStyle(.primary.opacity(0.6))
+            }
+
+            Section("Delivery") {
+                Toggle("Preview before paste", isOn: Binding(
+                    get: { appState.previewEnabled },
+                    set: { appState.previewEnabled = $0 }
+                ))
+                Text("Show transcribed text for review before pasting. Applies to Quick and Translate modes only.")
                     .font(.caption)
                     .foregroundStyle(.primary.opacity(0.6))
             }
@@ -153,6 +172,31 @@ struct GeneralTab: View {
                 Text("Dock icon is optional — Skrivar always lives in the menu bar")
                     .font(.caption)
                     .foregroundStyle(.primary.opacity(0.6))
+            }
+
+            if !appState.recentApps.isEmpty {
+                Section("Text Insertion") {
+                    ForEach(appState.recentApps, id: \.bundleId) { app in
+                        Picker(app.name, selection: Binding(
+                            get: { appState.insertionRules[app.bundleId] ?? "auto" },
+                            set: { newValue in
+                                if newValue == "auto" {
+                                    appState.insertionRules.removeValue(forKey: app.bundleId)
+                                } else {
+                                    appState.insertionRules[app.bundleId] = newValue
+                                }
+                            }
+                        )) {
+                            Text("Auto").tag("auto")
+                            Text("AX API").tag("accessibility")
+                            Text("Clipboard").tag("clipboard")
+                        }
+                        .pickerStyle(.menu)
+                    }
+                    Text("Override how Skrivar inserts text per app. Auto tries AX API first, falls back to clipboard.")
+                        .font(.caption)
+                        .foregroundStyle(.primary.opacity(0.6))
+                }
             }
         }
         .formStyle(.grouped)

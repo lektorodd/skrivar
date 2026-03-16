@@ -35,7 +35,15 @@ final class OverlayPanel: NSPanel {
         hosting.frame = NSRect(x: 0, y: 0, width: width, height: height)
         hosting.wantsLayer = true
         hosting.layer?.backgroundColor = .clear
+        hosting.layer?.isOpaque = false
+
+        // Remove NSHostingView's default opaque background
+        if let layer = hosting.layer {
+            layer.backgroundColor = CGColor.clear
+        }
         self.contentView = hosting
+        self.contentView?.wantsLayer = true
+        self.contentView?.layer?.backgroundColor = .clear
         self.hostingView = hosting
     }
 
@@ -136,6 +144,7 @@ struct OverlayContent: View {
             }
             .padding(.horizontal, 6)
         }
+        .clipShape(Capsule())
         .opacity(state.isVisible ? 1 : 0)
         .scaleEffect(state.isVisible ? 1 : 0.8)
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: state.isVisible)
@@ -218,7 +227,7 @@ struct OverlayContent: View {
     private var accentColor: Color {
         if state.isError { return .red }
         switch state.mode {
-        case .quick:       return .white
+        case .quick:       return .primary
         case .translate:   return Color(red: 0, green: 0.82, blue: 0.70)   // Teal
         case .obsidianRaw: return Color(red: 0.95, green: 0.75, blue: 0.20) // Warm amber
         case .flash:       return Color(red: 1.0, green: 0.85, blue: 0.30)  // Bright gold

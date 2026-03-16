@@ -11,6 +11,30 @@ final class AppState {
     /// (prevents mode loss when user releases Shift before ⌃⌥)
     var lockedMode: CaptureMode = .quick
 
+    /// Trigger modifier flags (raw UInt value). Default: Control + Option.
+    var triggerModifiersRaw: UInt = {
+        let saved = UserDefaults.standard.object(forKey: "triggerModifiersRaw") as? UInt
+        return saved ?? NSEvent.ModifierFlags([.control, .option]).rawValue
+    }() {
+        didSet { UserDefaults.standard.set(triggerModifiersRaw, forKey: "triggerModifiersRaw") }
+    }
+
+    var triggerModifiers: NSEvent.ModifierFlags {
+        NSEvent.ModifierFlags(rawValue: triggerModifiersRaw)
+    }
+
+    /// Display string for the current trigger (e.g. "⌃⌥").
+    var triggerDisplayString: String {
+        Self.triggerPresets.first(where: { $0.rawValue == triggerModifiersRaw })?.display ?? "⌃⌥"
+    }
+
+    /// Preset trigger modifier combos (safe, no conflicts with system shortcuts).
+    static let triggerPresets: [(name: String, display: String, rawValue: UInt)] = [
+        ("Control + Option", "⌃⌥", NSEvent.ModifierFlags([.control, .option]).rawValue),
+        ("Control + Shift", "⌃⇧", NSEvent.ModifierFlags([.control, .shift]).rawValue),
+        ("Option + Shift", "⌥⇧", NSEvent.ModifierFlags([.option, .shift]).rawValue),
+    ]
+
     // VAD (Voice Activity Detection) settings
     var vadEnabled: Bool = UserDefaults.standard.bool(forKey: "vadEnabled") {
         didSet { UserDefaults.standard.set(vadEnabled, forKey: "vadEnabled") }
@@ -22,6 +46,34 @@ final class AppState {
     }
     var compressionEnabled: Bool = UserDefaults.standard.object(forKey: "compressionEnabled") as? Bool ?? true {
         didSet { UserDefaults.standard.set(compressionEnabled, forKey: "compressionEnabled") }
+    }
+    var previewEnabled: Bool = UserDefaults.standard.bool(forKey: "previewEnabled") {
+        didSet { UserDefaults.standard.set(previewEnabled, forKey: "previewEnabled") }
+    }
+
+    // Per-app insertion rules: bundleId → "auto" | "accessibility" | "clipboard"
+    var insertionRules: [String: String] = {
+        if let data = UserDefaults.standard.data(forKey: "insertionRules"),
+           let dict = try? JSONDecoder().decode([String: String].self, from: data) {
+            return dict
+        }
+        return [:]
+    }() {
+        didSet {
+            if let data = try? JSONEncoder().encode(insertionRules) {
+                UserDefaults.standard.set(data, forKey: "insertionRules")
+            }
+        }
+    }
+
+    /// Recently-used app bundle IDs (for Settings UI). Max 20.
+    var recentApps: [(bundleId: String, name: String)] = []
+
+    func trackApp(bundleId: String, name: String) {
+        if !recentApps.contains(where: { $0.bundleId == bundleId }) {
+            recentApps.append((bundleId: bundleId, name: name))
+            if recentApps.count > 20 { recentApps.removeFirst() }
+        }
     }
     var pendingRecordTask: DispatchWorkItem?
     var cancellableTranscriptionTask: Task<Void, Never>?
