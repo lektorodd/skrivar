@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.5.1] - 2026-03-18
+
+### Fixed
+- **Clipboard race condition** — increased post-paste delay from 150ms to 500ms so Electron apps (VS Code, Slack, Discord) and web apps have time to read the paste before clipboard is restored; previously the old clipboard content could be pasted instead of the transcription
+- **Clipboard restore safety** — clipboard save/restore now uses a `defer` block so the original clipboard is always restored, even if an unexpected error occurs during paste
+- **Thread safety** — text insertion via clipboard (pasteboard access + CGEvent) now always runs on the main thread; previously the direct-paste path could run on a background thread, causing intermittent paste failures
+
 ## [0.5.0] - 2026-03-16
 
 ### Added

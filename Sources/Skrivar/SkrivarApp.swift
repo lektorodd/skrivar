@@ -520,8 +520,11 @@ struct SkrivarApp: App {
                     }
                 } else {
                     // Direct paste (original behavior)
-                    let rules = await MainActor.run { appState.insertionRules }
-                    let method = TextInserter.insert(capturedFinalText, rules: rules)
+                    // TextInserter uses NSPasteboard and CGEvent which must run on the main thread
+                    let method = await MainActor.run {
+                        let rules = appState.insertionRules
+                        return TextInserter.insert(capturedFinalText, rules: rules)
+                    }
                     await MainActor.run {
                         stopProcessingAnimation()
                         appState.isTranscribing = false

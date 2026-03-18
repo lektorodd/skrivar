@@ -131,15 +131,22 @@ enum TextInserter {
         // Save ALL pasteboard items (not just string) to preserve images, files, RTF, etc.
         let savedItems = savePasteboardContents(pasteboard)
 
+        // Always restore clipboard, even if something unexpected happens
+        defer {
+            restorePasteboardContents(pasteboard, items: savedItems)
+        }
+
         pasteboard.clearContents()
         pasteboard.setString(text, forType: .string)
 
+        // Brief pause to let the pasteboard settle before sending Cmd+V
         usleep(50_000)
         simulateCmdV()
-        usleep(150_000)
 
-        // Restore the full clipboard state
-        restorePasteboardContents(pasteboard, items: savedItems)
+        // Wait long enough for the target app to read the paste.
+        // Electron apps (VS Code, Slack, Discord) and web apps can take
+        // 200–500ms to process a paste event. 500ms covers the vast majority.
+        usleep(500_000)
     }
 
     /// Save all pasteboard items and their data for every type.
